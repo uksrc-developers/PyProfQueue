@@ -1,0 +1,22 @@
+mkdir ${LIKWID_RUNNING_DIR}
+
+export LIK_OUTPUT=${LIKWID_RUNNING_DIR}/likwid_performance_out.txt
+export THREAD_COUNT=$(($(lscpu --all --parse=CPU,SOCKET,CORE | grep -v '^#' | tail -1 | grep -o -E '^.{2,3},' --max-count=1 | rev) + 1))
+export STREAM_SIZE=$((10 * ${THREAD_COUNT}))kB
+echo 'Scalar MFlops/s' > ${LIK_OUTPUT}
+likwid-bench -t peakflops -W N:${STREAM_SIZE}:${THREAD_COUNT} | grep 'MFlops/s:' >> ${LIK_OUTPUT}
+echo 'SSE MFlops/s' >> ${LIK_OUTPUT}
+likwid-bench -t peakflops_sse -W N:${STREAM_SIZE}:${THREAD_COUNT} | grep 'MFlops/s:' >> ${LIK_OUTPUT}
+echo 'AVX MFlops/s' >> ${LIK_OUTPUT}
+likwid-bench -t peakflops_avx -W N:${STREAM_SIZE}:${THREAD_COUNT} | grep 'MFlops/s:' >> ${LIK_OUTPUT}
+echo 'AVX (FMA) MFlops/s' >> ${LIK_OUTPUT}
+likwid-bench -t peakflops_avx_fma -W N:${STREAM_SIZE}:${THREAD_COUNT} | grep 'MFlops/s:' >> ${LIK_OUTPUT}
+echo 'Scalar MByte/s' >> ${LIK_OUTPUT}
+likwid-bench -t load -W N:8GB:${THREAD_COUNT} | grep 'MByte/s:' >> ${LIK_OUTPUT}
+echo 'SSE MByte/s' >> ${LIK_OUTPUT}
+likwid-bench -t load_sse -W N:8GB:${THREAD_COUNT} | grep 'MByte/s:' >> ${LIK_OUTPUT}
+echo 'AVX MByte/s' >> ${LIK_OUTPUT}
+likwid-bench -t load_avx -W N:8GB:${THREAD_COUNT} | grep 'MByte/s:' >> ${LIK_OUTPUT}
+# *=*
+echo 'Program Performance' >> ${LIK_OUTPUT}
+grep -e 'MFLOP/s STAT' -e 'Operational intensity STAT' /cosma5/data/do011/dc-keil1/TestFiles/Results/First/${SLURM_JOB_NAME}-${SLURM_JOB_ID}/job_output_setup.txt >> ${LIK_OUTPUT}
