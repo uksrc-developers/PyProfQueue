@@ -59,3 +59,9 @@ following command without sudo rights:
 ```
 likwid-perfctr -g MEM_DP -f <executable>
 ```
+
+## Adding new Queue system compatibility
+
+In order to add new queue system compatibility refer to the block comments in the Script class in script.py. 
+Each of the four section that needs changes is marked with "Queue System specifics" followed by a {1}, {2}, 
+{3} or {4}.
