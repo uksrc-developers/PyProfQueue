@@ -1,7 +1,9 @@
+# Built in Modules
 from importlib import resources as impresources
 import itertools
-
-from Profiling.src import utils
+import sys
+# Local package imports
+from . import data
 
 
 class Script:
@@ -101,6 +103,8 @@ class Script:
 
         if bool(queue_options):
             self.obj_options = self.Options(queue_options)
+        else:
+            self.obj_options = self.Options()
 
         # Queue System specifics {1}
         '''
@@ -177,7 +181,7 @@ class Script:
 
     def add_likwid(self, likwid_req, likwid_output='./'):
         self.likwid = True
-        self.likwid_file = impresources.files(utils) / "likwid_commands.txt"
+        self.likwid_file = impresources.files(data) / "likwid_commands.txt"
         self.likwid_initEndSplit = -1
         self.likwid_location = likwid_output
         self.likwid_req = likwid_req
@@ -190,11 +194,13 @@ class Script:
                 contains_ps = True
             if 'PROMPYTHON' in req:
                 contains_pp = True
+            else:
+                prometheus_req += ['export PROMPYTHON={}'.format(sys.executable)]
         if not contains_ps or not contains_pp:
             exit('When requesting prometheus profiling, prometheus_req must include "export PROMETHEUS_SOFTWARE=" and '
                  '"export PROMPYTHON=".')
         self.prometheus = True
-        self.prometheus_file = impresources.files(utils) / "prometheus_commands.txt"
+        self.prometheus_file = impresources.files(data) / "prometheus_commands.txt"
         self.prometheus_initEndSplit = -1
         self.prometheus_location = prometheus_output
         self.prometheus_req = prometheus_req
@@ -325,8 +331,7 @@ class Script:
                     case 'output':
                         self.output = value
                     case _:
-                        print('Unknown option value in key: {}, with value: {}'.format(key, value))
-                        exit('Unknown option in pass_options')
+                        exit('Unknown option value in key: {}, with value: {} passed to pass_options'.format(key, value))
 
         # Queue System specifics {3}
         '''
@@ -402,8 +407,7 @@ class Script:
                         else:
                             self.output = value
                     case _:
-                        print('Unknown option value in key: {}, with value: {}'.format(key, value))
-                        exit('Unknown option in pass_options')
+                        exit('Unknown option value in key: {}, with value: {} passed to <queue_name>_options'.format(key, value))
         =====
         '''
         def slurm_options(self, slurm_options):
@@ -460,8 +464,7 @@ class Script:
                         else:
                             self.output = value
                     case _:
-                        print('Unknown option value in key: {}, with value: {}'.format(key, value))
-                        exit('Unknown option in pass_options')
+                        exit('Unknown option value in key: {}, with value: {} passed to slurm_options'.format(key, value))
 
         def torque_options(self, torque_options):
             for key, value in torque_options.items():
@@ -517,8 +520,7 @@ class Script:
                         else:
                             self.output = value
                     case _:
-                        print('Unknown option value in key: {}, with value: {}'.format(key, value))
-                        exit('Unknown option in pass_options')
+                        exit('Unknown option value in key: {}, with value: {} passed to torque_options'.format(key, value))
 
         def remove_empty_options(self):
             empty_attributes = [a for a in dir(self) if (not a.startswith('__') and
@@ -751,7 +753,7 @@ class Script:
             profilefile.write(i)
             profilefile.write('\n')
         profilefile.write('export PROMET_RUNNING_DIR=${WORKING_DIR}/Prometheus\n')
-        scrape_path = str(impresources.path(utils, 'read_prometheus.py'))[:-19]
+        scrape_path = str(impresources.path(data, 'read_prometheus.py'))[:-19]
         profilefile.write('export PROFILE_SCRAPE={}\n'.format(scrape_path))
         profilefile.write('\n')
         with open(self.prometheus_file, 'r') as prometheus_file:

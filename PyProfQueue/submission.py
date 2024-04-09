@@ -1,6 +1,7 @@
+# Built in Modules
 import subprocess
 import time
-
+# Local package imports
 from .script import Script
 
 
@@ -36,7 +37,7 @@ def submit(script: Script,
             print('Submitting script to profile using the following command:')
         if test:
             print('The following command would be used to submit a job to the queue:')
-        print(' '.join([getattr(script, 'submission'), getattr(script, 'tmp_profile_script')]))
+            print(' '.join([getattr(script, 'submission'), getattr(script, 'tmp_profile_script')]))
     if not test:
         subprocess.run(' '.join([getattr(script, 'submission'), getattr(script, 'tmp_profile_script')]), shell=True)
         time.sleep(1)

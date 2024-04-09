@@ -1,10 +1,12 @@
-from promql_http_api import PromqlHttpApi
-import numpy as np
-from time import strftime, localtime, strptime
-import pytz
-import pandas as pd
-import sys
+# Built in Modules
+from time import strftime, localtime
 from datetime import datetime
+import sys
+# External packages
+from promql_http_api import PromqlHttpApi
+import pandas as pd
+import numpy as np
+import pytz
 
 n = sys.argv
 tz = pytz.timezone('UTC')
