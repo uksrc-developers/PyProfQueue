@@ -1,13 +1,20 @@
 from setuptools import setup
 
+# read the contents of your README file
+from pathlib import Path
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
+
 setup(
     name='PyProfQueue',
     version='0.1',
     description='A python package to inject profiling initialisation into bash scripts, translate queue options and '
                 'submit jobs',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     url='https://github.com/Marcus-Keil/PyProfQueue',
     author='Marcus Keil',
-    author_email='marcusk050291 at gmail dot com',
+    author_email='marcusk050291@gmail.com',
     license='MIT License',
     packages=['PyProfQueue'],
     package_dir={'PyProfQueue': 'PyProfQueue'},
