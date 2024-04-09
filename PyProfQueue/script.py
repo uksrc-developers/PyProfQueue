@@ -243,7 +243,7 @@ class Script:
             case '<queue_name>':
                 working_dir = self.obj_options.output[:-4] # .replace('<special format>', job_directory) # if this queue system has a special format
             case _:
-                exit('queue_system was unknown with value: {}'.format(self.queue_system))
+                exit('queue_system was unknown  when translating from <queue_name> to {}'.format(self.queue_system))
     =====
     Template for the nested case in old queue systems:
     =====
@@ -272,7 +272,7 @@ class Script:
                             .replace('%j', job_id)
                         working_dir = self.obj_options.output[:-4]
                     case _:
-                        exit('queue_system was unknown with value: {}'.format(self.queue_system))
+                        exit('queue_system was unknown when translating from slurm to {}'.format(self.queue_system))
             case 'torque':
                 match self.queue_system:
                     case 'slurm':
@@ -285,7 +285,7 @@ class Script:
                     case 'torque':
                         working_dir = self.obj_options.output[:-4]
                     case _:
-                        exit('queue_system was unknown with value: {}'.format(self.queue_system))
+                        exit('queue_system was unknown when translating from torque to {}'.format(self.queue_system))
             case _:
                 exit('read_queue_system was unknown with value: {}'.format(self.read_queue_system))
         if self.obj_options.workdir is None:
