@@ -2,9 +2,10 @@ from .submission import *
 from .script import *
 
 """
-pyexample.
+PyProfQueue.
 
-An example python library.
+Library to initialise Prometheus profiling and likwid performance measures within existing bash scripts and submitting 
+them to a queue system.
 """
 
 __version__ = "0.1"
