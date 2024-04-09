@@ -188,17 +188,18 @@ class Script:
 
     def add_prometheus(self, prometheus_req, prometheus_output='./'):
         contains_ps = False
-        contains_pp = False
         for req in prometheus_req:
             if 'PROMETHEUS_SOFTWARE' in req:
                 contains_ps = True
+                continue
             if 'PROMPYTHON' in req:
-                contains_pp = True
+                continue
             else:
                 prometheus_req += ['export PROMPYTHON={}'.format(sys.executable)]
-        if not contains_ps or not contains_pp:
-            exit('When requesting prometheus profiling, prometheus_req must include "export PROMETHEUS_SOFTWARE=" and '
-                 '"export PROMPYTHON=".')
+                continue
+
+        if not contains_ps:
+            exit('When requesting prometheus profiling, prometheus_req must include "export PROMETHEUS_SOFTWARE=".')
         self.prometheus = True
         self.prometheus_file = impresources.files(data) / "prometheus_commands.txt"
         self.prometheus_initEndSplit = -1
