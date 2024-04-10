@@ -38,9 +38,11 @@ class Script:
             str of the path and name of the file to which the prometheus values should be written to
         prometheus_req: list = None
             list of the required lines that need to be added to a bash script in order to allow prometheus
-            to be used. In order to run prometheus this list will need at least two entries. These are:
+            to be used. In order to run prometheus this list will need at least one entry:
                 'export PROMETHEUS_SOFTWARE=<path to the Prometheus software to be used>'
-                'export PROMPYTHON=<path to the Python version to be used to scrape the prometheus database>'
+            with an optional entry to change the python executable to use by declaring:
+                'export PROMETHEUS_PYTHON=<path to the Python version to be used to scrape the prometheus database>'
+            any additional entries will be added, but are at users discretion
 
         Notes
         -----
@@ -193,15 +195,15 @@ class Script:
             if 'PROMETHEUS_SOFTWARE' in req:
                 contains_ps = True
                 continue
-            if 'PROMPYTHON' in req:
+            if 'PROMETHEUS_PYTHON' in req:
                 contains_pp = True
                 continue
             else:
-                prometheus_req += ['export PROMPYTHON={}'.format(sys.executable)]
+                prometheus_req += ['export PROMETHEUS_PYTHON={}'.format(sys.executable)]
                 contains_pp = True
                 continue
         if not contains_pp:
-            prometheus_req += ['export PROMPYTHON={}'.format(sys.executable)]
+            prometheus_req += ['export PROMETHEUS_PYTHON={}'.format(sys.executable)]
             contains_pp = True
 
         if not contains_ps or not contains_pp:
@@ -759,7 +761,7 @@ class Script:
         for i in self.prometheus_req:
             profilefile.write(i)
             profilefile.write('\n')
-        profilefile.write('export PROMET_RUNNING_DIR=${WORKING_DIR}/Prometheus\n')
+        profilefile.write('export PROMETHEUS_RUNNING_DIR=${WORKING_DIR}/Prometheus\n')
         scrape_path = str(impresources.path(data, 'read_prometheus.py'))[:-19]
         profilefile.write('export PROFILE_SCRAPE={}\n'.format(scrape_path))
         profilefile.write('\n')
