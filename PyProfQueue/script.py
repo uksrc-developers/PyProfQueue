@@ -25,8 +25,6 @@ class Script:
         likwid : bool = False
             bool determining if likwid should be used to measure the performance such that a roofline
             model can be plotted
-        likwid_output: str = None
-            str of the path and name of the file to which the likwid values should be written to
         likwid_req: list = None
             list of the required lines that need to be added to a bash script in order to allow likwid
             to be used. For example, lines that load the likwid module if modules is being used on the
@@ -34,8 +32,6 @@ class Script:
         prometheus : bool = False
             bool determining if prometheus should be used to measure the metrics of the node on which
             the script is being run.
-        prometheus_output: str = None
-            str of the path and name of the file to which the prometheus values should be written to
         prometheus_req: list = None
             list of the required lines that need to be added to a bash script in order to allow prometheus
             to be used. In order to run prometheus this list will need at least one entry:
@@ -64,11 +60,9 @@ class Script:
                                     work_script='./example.sh',
                                     read_queue_system='slurm',
                                     likwid=True,
-                                    likwid_output='./',
                                     likwid_req=['module load oneAPI_comp',
                                                 'module load likwid'],
                                     prometheus=True,
-                                    prometheus_output='./',
                                     prometheus_req=['export PROMETHEUS_SOFTWARE=~/Software/prometheus'],
                                     queue_options={'user': 'user_name'})
     """
@@ -76,18 +70,18 @@ class Script:
                  work_script: str,
                  read_queue_system: str = None,
                  queue_options: dict = None,
-                 likwid: bool = False, likwid_output: str = None, likwid_req: list = None,
-                 prometheus: bool = False, prometheus_output: str = None, prometheus_req: list = None):
+                 likwid: bool = False, likwid_req: list = None,
+                 prometheus: bool = False, prometheus_req: list = None):
         if True: # If statement added to allow for the collapse of the initiation of variables
             self.queue_system = queue_system
             self.work_script = work_script
             self.tmp_work_script = None
             self.tmp_profile_script = None
             self.works = None
+            self.work_dir = None
             self.likwid = likwid
             self.likwid_file = None
             self.likwid_initEndSplit = None
-            self.likwid_location = None
             self.likwid_req = None
             self.prometheus = prometheus
             self.prometheus_file = None
@@ -96,9 +90,9 @@ class Script:
             self.read_queue_system = read_queue_system
 
         if self.likwid:
-            self.add_likwid(likwid_req, likwid_output)
+            self.add_likwid(likwid_req)
         if self.prometheus:
-            self.add_prometheus(prometheus_req, prometheus_output)
+            self.add_prometheus(prometheus_req)
 
         if bool(queue_options):
             self.obj_options = self.Options(queue_options)
@@ -151,6 +145,11 @@ class Script:
             case 'torque':
                 self.option_start = '#PBS '
                 self.submission = 'qsub'
+            case None:
+                if queue_options is None:
+
+                    print("No queue system was selected, therefore only queue_options['workdir'] is needed.")
+
             case _:
                 exit('No queue system chosen')
 
@@ -166,7 +165,10 @@ class Script:
                 self.obj_options.torque_options(options)
                 self.outputvariable_convert()
             case None:
-                if queue_options is None:
+                if self.queue_system is None:
+                    if self.obj_options.workdir is None:
+                        self.obj_options.workdir = './'
+                elif queue_options is None:
                     exit('"read_queue_system" was left as None, but no queue options were provided with "queue_options"')
                 else:
                     self.outputvariable_convert()
@@ -177,14 +179,13 @@ class Script:
         # ==========================
         self.obj_options.remove_empty_options()
 
-    def add_likwid(self, likwid_req, likwid_output='./'):
+    def add_likwid(self, likwid_req):
         self.likwid = True
         self.likwid_file = impresources.files(data) / "likwid_commands.txt"
         self.likwid_initEndSplit = -1
-        self.likwid_location = likwid_output
         self.likwid_req = likwid_req
 
-    def add_prometheus(self, prometheus_req, prometheus_output='./'):
+    def add_prometheus(self, prometheus_req):
         contains_ps = False
         contains_pp = False
         for req in prometheus_req:
@@ -207,7 +208,6 @@ class Script:
         self.prometheus = True
         self.prometheus_file = impresources.files(data) / "prometheus_commands.txt"
         self.prometheus_initEndSplit = -1
-        self.prometheus_location = prometheus_output
         self.prometheus_req = prometheus_req
 
     def option_pass(self):
@@ -239,13 +239,46 @@ class Script:
     case '<queue_name>':
         match self.queue_system:
             case 'slurm':
-                self.obj_options.output = self.obj_options.output.replace(<'<special format>' or job_directory>, '%x.%j')
-                working_dir = self.obj_options.output[:-4]
+                self.obj_options.output = self.obj_options.output\
+                    .replace('<Job_Name_Variable>', '%x')\
+                    .replace('<Job_ID_Variable>', '%j')
+                if self.obj_options.workdir is not None:
+                    self.work_dir = self.obj_options.workdir\
+                        .replace('%x', '${SLURM_JOB_NAME}')\
+                        .replace('%j', '${SLURM_JOB_ID}')
+                else:
+                    self.work_dir = self.obj_options.output[:-4]\
+                        .replace('%x', '<Job_Name_Variable>')\
+                        .replace('%j', '<Job_ID_Variable>')
             case 'torque':
-                self.obj_options.output = self.obj_options.output.replace('<special format>', job_directory)
-                working_dir = self.obj_options.output[:-4]
+                self.obj_options.output = self.obj_options.output \
+                    .replace('<Job_Name_Variable>', '${PBS_JOBNAME}') \
+                    .replace('<Job_ID_Variable>', '${PBS_JOBID}')
+                if self.obj_options.workdir is not None:
+                    self.work_dir = self.obj_options.workdir
+                else:
+                    self.work_dir = self.obj_options.output[:-4]
             case '<queue_name>':
-                working_dir = self.obj_options.output[:-4] # .replace('<special format>', job_directory) # if this queue system has a special format
+                # if the new queue system doesn't have special formats for designating Job_Name and Job_ID in options
+                # like slurm does, use this:
+                if self.obj_options.workdir is not None:
+                    self.work_dir = self.obj_options.workdir
+                else:
+                    self.work_dir = self.obj_options.output[:-4]
+                # if, like slurm, it has a special option only format for Job_Name and Job_ID use:
+                self.obj_options.output = self.obj_options.output\
+                    .replace('<Script_Job_Name_Variable>', '<Option_Job_Name_Variable>')\
+                    .replace('<Script_Job_ID_Variable>', '<Option_Job_ID_Variable>')
+                if self.obj_options.workdir is not None:
+                    self.work_dir = self.obj_options.workdir\
+                        .replace('<Script_Job_Name_Variable>', '<Option_Job_Name_Variable>')\
+                        .replace('<Script_Job_ID_Variable>', '<Option_Job_ID_Variable>')
+                else:
+                    self.work_dir = self.obj_options.output[:-4]\
+                        .replace('<Script_Job_Name_Variable>', '<Option_Job_Name_Variable>')\
+                        .replace('<Script_Job_ID_Variable>', '<Option_Job_ID_Variable>')
+            case None:
+                pass
             case _:
                 exit('queue_system was unknown  when translating from <queue_name> to {}'.format(self.queue_system))
     =====
@@ -262,19 +295,30 @@ class Script:
     =====
     -----
     '''
+    # ==========================
     def outputvariable_convert(self):
         match self.read_queue_system:
             case 'slurm':
                 match self.queue_system:
                     case 'slurm':
-                        working_dir = self.obj_options.output[:-4]\
-                            .replace('%x', '${SLURM_JOB_NAME}')\
-                            .replace('%j', '${SLURM_JOB_ID}')
+                        if self.obj_options.workdir is not None:
+                            self.work_dir = self.obj_options.workdir\
+                                .replace('%x', '${SLURM_JOB_NAME}')\
+                                .replace('%j', '${SLURM_JOB_ID}')
+                        else:
+                            self.work_dir = self.obj_options.output[:-4]\
+                                .replace('%x', '${SLURM_JOB_NAME}')\
+                                .replace('%j', '${SLURM_JOB_ID}')
                     case 'torque':
-                        self.obj_options.output = self.obj_options.output\
-                            .replace('%x', '${PBS_JOBNAME}')\
+                        self.obj_options.output = self.obj_options.output \
+                            .replace('%x', '${PBS_JOBNAME}') \
                             .replace('%j', '${PBS_JOBID}')
-                        working_dir = self.obj_options.output[:-4]
+                        if self.obj_options.workdir is not None:
+                            self.work_dir = self.obj_options.workdir
+                        else:
+                            self.work_dir = self.obj_options.output[:-4]
+                    case None:
+                        pass
                     case _:
                         exit('queue_system was unknown when translating from slurm to {}'.format(self.queue_system))
             case 'torque':
@@ -283,32 +327,45 @@ class Script:
                         self.obj_options.output = self.obj_options.output\
                             .replace('${PBS_JOBNAME}', '%x')\
                             .replace('${PBS_JOBID}', '%j')
-                        working_dir = self.obj_options.output[:-4]\
-                            .replace('%x', '${SLURM_JOB_NAME}')\
-                            .replace('%j', '${SLURM_JOB_ID}')
+                        if self.obj_options.workdir is not None:
+                            self.work_dir = self.obj_options.workdir\
+                                .replace('%x', '${SLURM_JOB_NAME}')\
+                                .replace('%j', '${SLURM_JOB_ID}')
+                        else:
+                            self.work_dir = self.obj_options.output[:-4]\
+                                .replace('%x', '${SLURM_JOB_NAME}')\
+                                .replace('%j', '${SLURM_JOB_ID}')
                     case 'torque':
-                        working_dir = self.obj_options.output[:-4]
+                        if self.obj_options.workdir is not None:
+                            self.work_dir = self.obj_options.workdir
+                        else:
+                            self.work_dir = self.obj_options.output[:-4]
+                    case None:
+                        pass
                     case _:
                         exit('queue_system was unknown when translating from torque to {}'.format(self.queue_system))
             case None:
                 match self.queue_system:
                     case 'slurm':
-                        working_dir = self.obj_options.output[:-4] \
-                            .replace('%x', '${SLURM_JOB_NAME}') \
-                            .replace('%j', '${SLURM_JOB_ID}')
+                        if self.obj_options.workdir is not None:
+                            self.work_dir = self.obj_options.workdir\
+                                .replace('%x', '${SLURM_JOB_NAME}')\
+                                .replace('%j', '${SLURM_JOB_ID}')
+                        else:
+                            self.work_dir = self.obj_options.output[:-4] \
+                                .replace('%x', '${SLURM_JOB_NAME}') \
+                                .replace('%j', '${SLURM_JOB_ID}')
                     case 'torque':
-                        working_dir = self.obj_options.output[:-4]
+                        if self.obj_options.workdir is not None:
+                            self.work_dir = self.obj_options.workdir
+                        else:
+                            self.work_dir = self.obj_options.output[:-4]
                     case _:
                         exit('queue_system was unknown when translating from no queue '
                              'system to {}'.format(self.queue_system))
             case _:
                 exit('read_queue_system was unknown with value: {}'.format(self.read_queue_system))
-
-        if self.obj_options.workdir is None:
-            self.output_dir = working_dir
-        else:
-            self.output_dir = self.obj_options.workdir
-
+    # ==========================
     class Options:
         def __init__(self, queue_options: dict = None):
             self.user = None
@@ -349,6 +406,13 @@ class Script:
                         self.output = value
                     case _:
                         exit('Unknown option value in key: {}, with value: {} passed to pass_options'.format(key, value))
+
+        def remove_empty_options(self):
+            empty_attributes = [a for a in dir(self) if (not a.startswith('__') and
+                                                         not callable(getattr(self, a)) and
+                                                         getattr(self, a) is None)]
+            for attribute in empty_attributes:
+                delattr(self, attribute)
 
         # Queue System specifics {3}
         '''
@@ -427,6 +491,7 @@ class Script:
                         exit('Unknown option value in key: {}, with value: {} passed to <queue_name>_options'.format(key, value))
         =====
         '''
+        # ==========================
         def slurm_options(self, slurm_options):
             for key, value in slurm_options.items():
                 match key:
@@ -538,13 +603,7 @@ class Script:
                             self.output = value
                     case _:
                         exit('Unknown option value in key: {}, with value: {} passed to torque_options'.format(key, value))
-
-        def remove_empty_options(self):
-            empty_attributes = [a for a in dir(self) if (not a.startswith('__') and
-                                                         not callable(getattr(self, a)) and
-                                                         getattr(self, a) is None)]
-            for attribute in empty_attributes:
-                delattr(self, attribute)
+        # ==========================
 
     def change_options(self, queue_options: dict):
         self.obj_options.pass_options(queue_options)
@@ -604,8 +663,8 @@ class Script:
                 return ''
     =====
     '''
+    # ==========================
     def option_converter(self, option):
-        # ==========================
         match self.queue_system:
             case 'slurm':
                 match option:
@@ -651,7 +710,7 @@ class Script:
                         return '-d '
                     case 'output':
                         return '-o '
-        # ==========================
+    # ==========================
 
     def read_script(self):
         options = {}
@@ -697,11 +756,16 @@ class Script:
         with open(self.tmp_profile_script, 'w') as profilefile:
             profilefile.seek(0)
             profilefile.write('#!/bin/bash\n')
-            self.add_options(profilefile)
-            if self.prometheus or self.likwid:
-                profilefile.write('export WORKING_DIR={}\n'.format(self.output_dir))
-                profilefile.write('mkdir ${WORKING_DIR}\n')
-                profilefile.write('\n')
+            if self.queue_system is not None:
+                self.add_options(profilefile)
+
+            profilefile.write('export WORKING_DIR={}\n'.format(self.work_dir))
+            profilefile.write('if [ ! -d  "${WORKING_DIR}" ]; then\n')
+            profilefile.write('  mkdir ${WORKING_DIR}\n')
+            profilefile.write('fi\n')
+            if self.queue_system is None:
+                profilefile.write('cd ${WORKING_DIR}\n')
+            profilefile.write('\n')
 
             if self.likwid:
                 self.init_likwid(profilefile)

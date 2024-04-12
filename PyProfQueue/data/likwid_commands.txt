@@ -19,4 +19,4 @@ echo 'AVX MByte/s' >> ${LIK_OUTPUT}
 likwid-bench -t load_avx -W N:8GB:${THREAD_COUNT} | grep 'MByte/s:' >> ${LIK_OUTPUT}
 # *=*
 echo 'Program Performance' >> ${LIK_OUTPUT}
-grep -e 'MFLOP/s STAT' -e 'Operational intensity STAT' /cosma5/data/do011/dc-keil1/TestFiles/Results/First/${SLURM_JOB_NAME}-${SLURM_JOB_ID}/job_output_setup.txt >> ${LIK_OUTPUT}
+grep -e 'MFLOP/s STAT' -e 'Operational intensity STAT' ${WORKING_DIR}/job_output_setup.txt >> ${LIK_OUTPUT}

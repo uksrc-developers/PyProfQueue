@@ -10,10 +10,8 @@ script = PyProfQueue.Script(queue_system: str,
                             read_queue_system: str =None,
                             queue_options: dict = None,
                             likwid: bool = False,
-                            likwid_output: str = None,
                             likwid_req: list = None,
                             prometheus: bool = False,
-                            prometheus_output: str = None,
                             prometheus_req: list = None
                             )   
 ```
@@ -23,10 +21,8 @@ script = PyProfQueue.Script(queue_system: str,
 if different from queue_system
 - queue_options(Optional): Any queue options to add or override when compared to the work_script 
 - likwid (Optional: defaults to False): Bool to determine if likwid should be used
-- likwid_output (Optional): Likwid output directory, if a specific one is to be used
 - likwid_req (Optional): Likwid requirements, details can be found in the section about **add_likwid**
 - prometheus (Optional: defaults to False): Bool to determine if prometheus should be used
-- prometheus_output (Optional): Prometheus output directory, if a specific one is to be used
 - prometheus_req (Optional): Prometheus requirements, details can be found in the section about **add_prometheus**
 
 The *Script* class has a few methods that are intended for external use, these are:

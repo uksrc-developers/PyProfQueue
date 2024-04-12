@@ -1,94 +1,121 @@
 # Built in Modules
 from time import strftime, localtime
 from datetime import datetime
-import sys
+import argparse
+
 # External packages
 from promql_http_api import PromqlHttpApi
 import pandas as pd
 import numpy as np
-import pytz
 
-n = sys.argv
-tz = pytz.timezone('UTC')
-# export START=$(date -d '1 hour ago' "+%+4Y-%m-%d %T")
-start_time = tz.localize(datetime.strptime(n[1], '%Y-%m-%d %H:%M:%S'))
-# export END=$(date +'%+4Y-%m-%d %T')
-end_time = tz.localize(datetime.strptime(n[2], '%Y-%m-%d %H:%M:%S'))
-
-api = PromqlHttpApi('http://localhost:9090')
-
-
-
-cpu_usage_data = api.query_range('100 - irate(node_cpu_seconds_total{mode="idle"}[1m])*100', start=start_time, end=end_time, step='10s')()['result']
-cpu_usage_dict = {}
-for i in cpu_usage_data:
-    name = 'cpu: ' + i['metric']['cpu']
-    cpu_usage_dict[name] = np.array([[float(x[0]), float(x[1])] for x in i['values']])
-
-cpu_iowait_data = api.query_range('irate(node_cpu_seconds_total{mode="iowait"}[1m])*100', start=start_time, end=end_time, step='10s')()['result']
-cpu_iowait_dict = {}
-for i in cpu_iowait_data:
-    name = 'cpu: ' + i['metric']['cpu']
-    cpu_iowait_dict[name] = np.array([[float(x[0]), float(x[1])] for x in i['values']])
-
-memory_GB_data = api.query_range('(node_memory_MemTotal_bytes-node_memory_MemAvailable_bytes)/(1000000000)', start=start_time, end=end_time, step='10s')()['result']
-memory_GB_dict = {}
-for i in memory_GB_data:
-    name = 'RAM (GB)'
-    memory_GB_dict[name] = np.array([[float(x[0]), float(x[1])] for x in i['values']])
-
-disk_write_GB_data = api.query_range('(irate(node_disk_written_bytes_total[1m]))/(1000000000)', start=start_time, end=end_time, step='10s')()['result']
-disk_write_GB_dict = {}
-for i in disk_write_GB_data:
-    name = 'Write: ' + i['metric']['device']
-    disk_write_GB_dict[name] = np.array([[float(x[0]), float(x[1])] for x in i['values']])
+parser = argparse.ArgumentParser(description="Just an example")
+parser.add_argument("-o", "--output", type=str, help="output path where data should be stored")
+parser.add_argument("-s", "--start_time", type=str, help="start time of the code")
+parser.add_argument("-e", "--end_time", type=str, help="end time of the code")
+parser.add_argument("-p", "--pre_prometheus", type=bool, default=False,
+                    help="Toggle for a Pre-Existing Prometheus instance")
+parser.add_argument("-i", "--ip_address", type=str, default="http://localhost:9090",
+                    help="IP address of the Prometheus instance")
+args = parser.parse_args()
 
 
-disk_read_GB_data = api.query_range('(irate(node_disk_read_bytes_total[1m]))/(1000000000)', start=start_time, end=end_time, step='10s')()['result']
-disk_read_GB_dict = {}
-for i in disk_read_GB_data:
-    name = 'Read: ' + i['metric']['device']
-    disk_read_GB_dict[name] = np.array([[float(x[0]), float(x[1])] for x in i['values']])
+def check_options():
+    global args
+    if args.output is None:
+        exit("output is required")
 
-network_receive_KB_data = api.query_range('irate(node_network_receive_bytes_total[1m])/1e3', start=start_time, end=end_time, step='10s')()['result']
-network_receive_KB_dict = {}
-for i in network_receive_KB_data:
-    name = 'Received: ' + i['metric']['device']
-    network_receive_KB_dict[name] = np.array([[float(x[0]), float(x[1])] for x in i['values']])
+    if args.start_time is None:
+        exit("Start time is required")
+    try:
+        start_time = datetime.strptime(args.start_time, '%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        exit("start time was not defined in the format '%Y-%m-%d %H:%M:%S', "
+             "the value was {}".format(str(args.start_time)))
 
-network_send_KB_data = api.query_range('irate(node_network_transmit_bytes_total[1m])/1e3', start=start_time, end=end_time, step='10s')()['result']
-network_send_KB_dict = {}
-for i in network_send_KB_data:
-    name = 'Sent: ' + i['metric']['device']
-    network_send_KB_dict[name] = np.array([[float(x[0]), float(x[1])] for x in i['values']])
+    if args.end_time is None:
+        exit("End time is required")
+    try:
+        end_time = datetime.strptime(args.end_time, '%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        exit("end time was not defined in format '%Y-%m-%d %H:%M:%S', "
+             "the value was {}".format(str(args.end_time)))
+
+    return start_time, end_time
 
 
-first = True
-for k in cpu_usage_dict.keys():
-    if first:
-        first = False
-        Full_df = pd.DataFrame({'Time:': cpu_usage_dict[k][:, 0], 'Usage ' + k: cpu_usage_dict[k][:, 1]})
-        Full_df = pd.merge(Full_df, pd.DataFrame({'Time:': cpu_usage_dict[k][:, 0], 'IO wait ' + k: cpu_iowait_dict[k][:, 1]}), on='Time:')
-    else:
-        Full_df = pd.merge(Full_df, pd.DataFrame({'Time:': cpu_usage_dict[k][:, 0], 'Usage ' + k: cpu_usage_dict[k][:, 1]}), on='Time:')
-        Full_df = pd.merge(Full_df, pd.DataFrame({'Time:': cpu_usage_dict[k][:, 0], 'IO wait ' + k: cpu_iowait_dict[k][:, 1]}), on='Time:')
+def prometheus_scrape(connection: PromqlHttpApi, command: str, begin: datetime, end: datetime,
+                      given_name: str, name_convention: str = None, step: str = '10s'):
+    queue_results = connection.query_range(command, start=begin, end=end, step=step)()['result']
+    queue_dict = {}
+    for result in queue_results:
+        if name_convention is not None:
+            key_name = given_name + ' ' + result['metric'][name_convention]
+            print(key_name)
+        else:
+            key_name = given_name
+        queue_dict[key_name] = np.array([[float(x[0]), float(x[1])] for x in result['values']])
+    return queue_dict
 
-Full_df = pd.merge(Full_df, pd.DataFrame({'Time:': memory_GB_dict["RAM (GB)"][:,0], "Memory Usage [GB]": memory_GB_dict["RAM (GB)"][:, 1]}), on='Time:')
 
-for k in disk_write_GB_dict.keys():
-    Full_df = pd.merge(Full_df, pd.DataFrame({'Time:': disk_write_GB_dict[k][:, 0], k: disk_write_GB_dict[k][:, 1]}), on='Time:')
+def pandas_merge(dictionary: dict, dataframe: pd.DataFrame = None):
+    for key in dictionary.keys():
+        if dataframe is None:
+            dataframe = pd.DataFrame({'Time': dictionary[key][:, 0], key: dictionary[key][:, 1]})
+        else:
+            dataframe = pd.merge(dataframe, pd.DataFrame({'Time': dictionary[key][:, 0],
+                                                          key: dictionary[key][:, 1]}), on='Time')
+    return dataframe
 
-for k in disk_read_GB_dict.keys():
-    Full_df = pd.merge(Full_df, pd.DataFrame({'Time:': disk_read_GB_dict[k][:, 0], k: disk_read_GB_dict[k][:, 1]}), on='Time:')
 
-for k in network_receive_KB_dict.keys():
-    Full_df = pd.merge(Full_df, pd.DataFrame({'Time:': network_receive_KB_dict[k][:, 0], k: network_receive_KB_dict[k][:, 1]}),
-                       on='Time:')
+def main():
+    global args
+    api = PromqlHttpApi(args.ip_address)
+    start_time, end_time = check_options()
+    cpu_usage_dict = prometheus_scrape(connection=api,
+                                       command='100 - irate(node_cpu_seconds_total{mode="idle"}[1m])*100',
+                                       begin=start_time, end=end_time,
+                                       given_name='CPU Usage:', name_convention='cpu')
+    Full_df = pandas_merge(dictionary=cpu_usage_dict)
 
-for k in network_send_KB_dict.keys():
-    Full_df = pd.merge(Full_df, pd.DataFrame({'Time:': network_send_KB_dict[k][:, 0], k: network_send_KB_dict[k][:, 1]}),
-                       on='Time:')
+    cpu_iowait_dict = prometheus_scrape(connection=api,
+                                        command='irate(node_cpu_seconds_total{mode="idle"}[1m])*100',
+                                        begin=start_time, end=end_time,
+                                        given_name='CPU IO Wait:', name_convention='cpu')
+    Full_df = pandas_merge(dictionary=cpu_iowait_dict, dataframe=Full_df)
 
-Full_df['Time:'] = Full_df['Time:'].apply(lambda x: strftime('%Y-%m-%d %H:%M:%S', localtime(x)))
+    memory_dict = prometheus_scrape(connection=api,
+                                    command='(node_memory_MemTotal_bytes-node_memory_MemAvailable_bytes)/(1000000000)',
+                                    begin=start_time, end=end_time,
+                                    given_name='Memory Usage [GB]')
+    Full_df = pandas_merge(dictionary=memory_dict, dataframe=Full_df)
 
-Full_df.to_feather(n[3]+'/prometheus_data')
+    disk_write_dict = prometheus_scrape(connection=api,
+                                        command='(irate(node_disk_written_bytes_total[1m]))/(1000000000)',
+                                        begin=start_time, end=end_time,
+                                        given_name='Write:', name_convention='device')
+    Full_df = pandas_merge(dictionary=disk_write_dict, dataframe=Full_df)
+
+    disk_read_dict = prometheus_scrape(connection=api,
+                                       command='(irate(node_disk_read_bytes_total[1m]))/(1000000000)',
+                                       begin=start_time, end=end_time,
+                                       given_name='Read:', name_convention='device')
+    Full_df = pandas_merge(dictionary=disk_read_dict, dataframe=Full_df)
+
+    network_receive_KB_dict = prometheus_scrape(connection=api,
+                                                command='irate(node_network_receive_bytes_total[1m])/1e3',
+                                                begin=start_time, end=end_time,
+                                                given_name='Received:', name_convention='device')
+    Full_df = pandas_merge(dictionary=network_receive_KB_dict, dataframe=Full_df)
+
+    network_send_KB_dict = prometheus_scrape(connection=api,
+                                             command='irate(node_network_transmit_bytes_total[1m])/1e3',
+                                             begin=start_time, end=end_time,
+                                             given_name='Sent:', name_convention='device')
+    Full_df = pandas_merge(dictionary=network_send_KB_dict, dataframe=Full_df)
+
+    Full_df['Time'] = Full_df['Time'].apply(lambda x: strftime('%Y-%m-%d %H:%M:%S', localtime(x)))
+
+    Full_df.to_feather(args.output + '/prometheus_data')
+
+if __name__ == '__main__':
+    main()
