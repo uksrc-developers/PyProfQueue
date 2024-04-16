@@ -12,8 +12,6 @@ parser = argparse.ArgumentParser(description="Just an example")
 parser.add_argument("-o", "--output", type=str, help="output path where data should be stored")
 parser.add_argument("-s", "--start_time", type=str, help="start time of the code")
 parser.add_argument("-e", "--end_time", type=str, help="end time of the code")
-parser.add_argument("-p", "--pre_prometheus", type=bool, default=False,
-                    help="Toggle for a Pre-Existing Prometheus instance")
 parser.add_argument("-i", "--ip_address", type=str, default="http://localhost:9090",
                     help="IP address of the Prometheus instance")
 args = parser.parse_args()
@@ -50,7 +48,6 @@ def prometheus_scrape(connection: PromqlHttpApi, command: str, begin: datetime, 
     for result in queue_results:
         if name_convention is not None:
             key_name = given_name + ' ' + result['metric'][name_convention]
-            print(key_name)
         else:
             key_name = given_name
         queue_dict[key_name] = np.array([[float(x[0]), float(x[1])] for x in result['values']])

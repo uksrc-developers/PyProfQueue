@@ -71,8 +71,8 @@ class Script:
                  read_queue_system: str = None,
                  queue_options: dict = None,
                  likwid: bool = False, likwid_req: list = None,
-                 prometheus: bool = False, prometheus_req: list = None):
-        if True: # If statement added to allow for the collapse of the initiation of variables
+                 prometheus: bool = False, prometheus_ip: str = None, prometheus_req: list = None):
+        if True:  # If statement added to allow for the collapse of the initiation of variables
             self.queue_system = queue_system
             self.work_script = work_script
             self.tmp_work_script = None
@@ -84,9 +84,9 @@ class Script:
             self.likwid_initEndSplit = None
             self.likwid_req = None
             self.prometheus = prometheus
+            self.prometheus_ip = prometheus_ip
             self.prometheus_file = None
             self.prometheus_initEndSplit = None
-            self.prometheus_location = None
             self.read_queue_system = read_queue_system
 
         if self.likwid:
@@ -188,22 +188,23 @@ class Script:
     def add_prometheus(self, prometheus_req):
         contains_ps = False
         contains_pp = False
-        for req in prometheus_req:
-            if 'PROMETHEUS_SOFTWARE' in req:
-                contains_ps = True
-                continue
-            if 'PROMETHEUS_PYTHON' in req:
-                contains_pp = True
-                continue
-            else:
-                prometheus_req += ['export PROMETHEUS_PYTHON={}'.format(sys.executable)]
-                contains_pp = True
-                continue
+        if prometheus_req is not None:
+            for req in prometheus_req:
+                if 'PROMETHEUS_SOFTWARE' in req:
+                    contains_ps = True
+                    continue
+                if 'PROMETHEUS_PYTHON' in req:
+                    contains_pp = True
+                    continue
+                else:
+                    prometheus_req += ['export PROMETHEUS_PYTHON={}'.format(sys.executable)]
+                    contains_pp = True
+                    continue
+        else:
+            prometheus_req = []
         if not contains_pp:
             prometheus_req += ['export PROMETHEUS_PYTHON={}'.format(sys.executable)]
-            contains_pp = True
-
-        if not contains_ps or not contains_pp:
+        if not contains_ps and self.prometheus_ip is None:
             exit('When requesting prometheus profiling, prometheus_req must include "export PROMETHEUS_SOFTWARE=".')
         self.prometheus = True
         self.prometheus_file = impresources.files(data) / "prometheus_commands.txt"
@@ -763,8 +764,7 @@ class Script:
             profilefile.write('if [ ! -d  "${WORKING_DIR}" ]; then\n')
             profilefile.write('  mkdir ${WORKING_DIR}\n')
             profilefile.write('fi\n')
-            if self.queue_system is None:
-                profilefile.write('cd ${WORKING_DIR}\n')
+            profilefile.write('cd ${WORKING_DIR}\n')
             profilefile.write('\n')
 
             if self.likwid:
@@ -790,7 +790,7 @@ class Script:
         to_write = [a for a in dir(self.obj_options) if not a.startswith('__') and
                     not callable(getattr(self.obj_options, a))]
         for option in to_write:
-            if option is not None:
+            if option is not None and option != 'workdir':
                 profilefile.write(self.option_start + self.option_converter(option) +
                                   self.obj_options.__getattribute__(option) + '\n')
         profilefile.write('\n')
@@ -834,6 +834,10 @@ class Script:
 
     def init_prometheus(self, profilefile):
         profilefile.write('# Prometheus initialisation declarations\n')
+        if self.prometheus_ip is None:
+            profilefile.write("export PROMETHEUS_IP=http://localhost:9090\n")
+        else:
+            profilefile.write("export PROMETHEUS_IP={}\n".format(self.prometheus_ip))
         for i in self.prometheus_req:
             profilefile.write(i)
             profilefile.write('\n')
@@ -841,19 +845,50 @@ class Script:
         scrape_path = str(impresources.path(data, 'read_prometheus.py'))[:-19]
         profilefile.write('export PROFILE_SCRAPE={}\n'.format(scrape_path))
         profilefile.write('\n')
+        final_init_indicator = 2
+        if self.prometheus_ip is None:
+            read_indicators = [0, 1, 2]
+        else:
+            read_indicators = [0, 2]
+        indicator = 0
         with open(self.prometheus_file, 'r') as prometheus_file:
             for number, line in enumerate(prometheus_file):
-                if line == '# *=*\n':
+                if line == '# *=*\n' and indicator >= final_init_indicator:
                     self.prometheus_initEndSplit = number + 1
                     break
-                profilefile.write(line)
+                elif line == '# *=*\n':
+                    indicator += 1
+                    continue
+                if indicator in read_indicators:
+                    profilefile.write(line)
+        print(indicator)
+        print(self.prometheus_initEndSplit)
         profilefile.write('# Prometheus initialisation done\n')
         profilefile.write('\n')
 
     def end_prometheus(self, profilefile):
         profilefile.write('# Prometheus final steps declarations\n')
+        if self.prometheus_ip is None:
+            read_indicators = [0, 1, 2]
+        else:
+            read_indicators = [0, 2]
+        indicator = 0
         with open(self.prometheus_file, 'r') as prometheus_file:
             for line in itertools.islice(prometheus_file, self.prometheus_initEndSplit, None):
-                profilefile.write(line)
+                if line == '# *=*\n':
+                    indicator += 1
+                    continue
+                if indicator in read_indicators:
+                    profilefile.write(line)
         profilefile.write('# Prometheus final steps done\n')
         profilefile.write('\n')
+
+    def existing_init_prometheus(self, profilefile):
+        profilefile.write('# Prometheus initialisation for scraping existing instance')
+        for i in self.prometheus_req:
+            profilefile.write(i)
+            profilefile.write('\n')
+        profilefile.write('export PROMETHEUS_RUNNING_DIR=${WORKING_DIR}/Prometheus\n')
+
+    def existing_end_prometheus(self, profilefile):
+        profilefile.write('# Prometheus final steps for scraping existing instance')
