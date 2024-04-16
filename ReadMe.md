@@ -12,6 +12,7 @@ script = PyProfQueue.Script(queue_system: str,
                             likwid: bool = False,
                             likwid_req: list = None,
                             prometheus: bool = False,
+                            prometheus_ip: str = None, 
                             prometheus_req: list = None
                             )   
 ```
@@ -23,6 +24,8 @@ if different from queue_system
 - likwid (Optional: defaults to False): Bool to determine if likwid should be used
 - likwid_req (Optional): Likwid requirements, details can be found in the section about **add_likwid**
 - prometheus (Optional: defaults to False): Bool to determine if prometheus should be used
+- prometheus_ip (Optional: defaults to None): IP address of pre-existing Prometheus instance, not providing an 
+address will default to launching prometheus with the address 'http://localhost:9090'
 - prometheus_req (Optional): Prometheus requirements, details can be found in the section about **add_prometheus**
 
 The *Script* class has a few methods that are intended for external use, these are:
@@ -35,12 +38,13 @@ For example, loading the likwid module:
 ```
 likwid_req = ['module load likwid']
 ```
-- **add_prometheus**(prometheus_req: list, prometheus_output: str ='./')
+- **add_prometheus**(prometheus_req: list, prometheus_ip: str ='./')
   - Adds necessary initiation to use measure computing resource usage
   - This can be used if a *Script* object was not initiated with prometheus options, or if they are to be changed
   - prometheus_req is a list that should contain the necessary lines for the system in use to be able to use
 prometheus.
-It is necessary to at least add the following entry:
+  - prometheus_ip is a string which is the ip-address of a pre-existing prometheus instance, if it exists.
+It is necessary to at least add the following entry unless prometheus_ip is provided:
 ``` 
 prometheus_req = [
     'export PROMETHEUS_SOFTWARE=<Path to Prometheus software>'

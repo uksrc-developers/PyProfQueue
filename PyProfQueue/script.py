@@ -185,9 +185,11 @@ class Script:
         self.likwid_initEndSplit = -1
         self.likwid_req = likwid_req
 
-    def add_prometheus(self, prometheus_req):
+    def add_prometheus(self, prometheus_req: list, prometheus_ip: str = None):
         contains_ps = False
         contains_pp = False
+        if prometheus_ip is not None:
+            self.prometheus_ip = prometheus_ip
         if prometheus_req is not None:
             for req in prometheus_req:
                 if 'PROMETHEUS_SOFTWARE' in req:
