@@ -147,7 +147,6 @@ class Script:
                 self.submission = 'qsub'
             case None:
                 if queue_options is None:
-
                     print("No queue system was selected, therefore only queue_options['workdir'] is needed.")
 
             case _:
@@ -863,8 +862,6 @@ class Script:
                     continue
                 if indicator in read_indicators:
                     profilefile.write(line)
-        print(indicator)
-        print(self.prometheus_initEndSplit)
         profilefile.write('# Prometheus initialisation done\n')
         profilefile.write('\n')
 

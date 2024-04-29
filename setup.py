@@ -7,7 +7,7 @@ long_description = (this_directory / "ReadMe.md").read_text()
 
 setup(
     name='PyProfQueue',
-    version='0.1.9',
+    version='0.1.9b0',
     url='https://github.com/Marcus-Keil/PyProfQueue',
     author='Marcus Keil',
     author_email='marcusk050291@gmail.com',
@@ -18,6 +18,7 @@ setup(
     install_requires=[
         'numpy',
         'pytz',
+        'pyarrow',
         'promql_http_api==0.3.3',
         'pandas<=2.2.1',
     ],

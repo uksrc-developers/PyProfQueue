@@ -1,9 +1,9 @@
 mkdir ${PROMETHEUS_RUNNING_DIR}
 # *=*
+${PROMETHEUS_SOFTWARE}/prometheus/prometheus --config.file=${PROMETHEUS_SOFTWARE}/prometheus/prometheus.yml --storage.tsdb.path=${PROMETHEUS_RUNNING_DIR}/data > /dev/null 2>&1 &
+export PROMETHEUS_PID=$!
 ${PROMETHEUS_SOFTWARE}/node_exporter/node_exporter > /dev/null 2>&1 &
 export NODE_PID=$!
-${PROMETHEUS_SOFTWARE}/prometheus --config.file=${PROMETHEUS_SOFTWARE}/prometheus.yml --storage.tsdb.path=${PROMETHEUS_RUNNING_DIR}/data > /dev/null 2>&1 &
-export PROMETHEUS_PID=$!
 # *=*
 export START_TIME=$(date +%s)
 sleep 15
@@ -11,8 +11,8 @@ sleep 15
 sleep 15
 export END_TIME=$(date +%s)
 export DURATION=$((${END_TIME} - ${START_TIME}))
-export START=$(date -d @${START_TIME} -u +"%Y-%m-%d %H:%M:%S")
-export END=$(date -d @${END_TIME} -u +"%Y-%m-%d %H:%M:%S")
+export START=$(date -d @${START_TIME} +"%Y-%m-%d %H:%M:%S")
+export END=$(date -d @${END_TIME} +"%Y-%m-%d %H:%M:%S")
 ${PROMETHEUS_PYTHON} ${PROFILE_SCRAPE}/read_prometheus.py -o "${PROMETHEUS_RUNNING_DIR}" -s "${START}" -e "${END}" -i "${PROMETHEUS_IP}"
 # *=*
 sleep 1
