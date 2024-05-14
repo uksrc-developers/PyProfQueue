@@ -1,6 +1,7 @@
 # Built in Modules
 import subprocess
 import time
+
 # Local package imports
 from .script import Script
 
@@ -12,7 +13,9 @@ def submit(script: Script,
            leave_scripts: bool = True,
            test: bool = False):
     '''
-    Submission
+    Create the temporary profile file and temporary work script in order to submit them to the appropriate queuing
+    system.
+
     Parameters
     ----------
     script : pyprofbash.Script
@@ -25,22 +28,23 @@ def submit(script: Script,
     bash_options : list = ['']
         Optional parameter to add additional strings to the end of the call of the original work script in case
         that script has options it needs to have passed to it.
-    leave_scripts : bool = False
+    leave_scripts : bool = True
         If True, leave scripts after submission.
-    verbose : bool =  False
-        If True, steps taken will be printed to stdout.
+    test : bool =  False
+        If True, leaves scripts that are created, but does not submit them. Instead, it prints out the command it would
+        have used if it had submitted them.
     '''
     script.create_profilefile(tmp_work_script, tmp_profile_script, bash_options)
     if test:
-        if test:
-            print('The following command would be used to submit a job to the queue:')
-            print(' '.join([getattr(script, 'submission'), getattr(script, 'tmp_profile_script')]))
-    if not test:
+        print('The following command would be used to submit a job to the queue:')
+        print(' '.join([getattr(script, 'submission'), getattr(script, 'tmp_profile_script')]))
+    else:
         subprocess.run(' '.join([getattr(script, 'submission'), getattr(script, 'tmp_profile_script')]), shell=True)
         time.sleep(1)
-    if leave_scripts:
+
+    if leave_scripts or test:
         return
     else:
-        subprocess.run('rm {}'.format(getattr(script, 'tmp_profile_script')), shell=True)
-        subprocess.run('rm {}'.format(getattr(script, 'tmp_work_script')), shell=True)
+        subprocess.run(f'rm {tmp_profile_script}', shell=True)
+        subprocess.run(f'rm {tmp_work_script}', shell=True)
         return

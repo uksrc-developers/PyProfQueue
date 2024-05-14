@@ -1,0 +1,6 @@
+# Place any arguments that need to occur prior to calling the user bash script here
+
+# This symbol indicates where the separation between stages is
+# *=*
+
+# Place any arguments that need to occur after calling the user bash script here

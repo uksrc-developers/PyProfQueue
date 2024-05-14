@@ -1,5 +1,6 @@
 from .submission import *
 from .script import *
+from .plot import *
 
 """
 PyProfQueue.
