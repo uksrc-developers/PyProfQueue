@@ -909,14 +909,27 @@ class Script:
                 for key in self.profiling.keys():
                     self.initialise_profiling(key, profilefile)
 
+                profilefile.write('export START_TIME=$(date +%s)\n')
+                profilefile.write('sleep 10\n\n')
                 for key in self.profiling.keys():
                     self.run_work_profiling(key, profilefile, bash_options)
-
                 if not self.at_execute:
                     self.run_work(profilefile, bash_options)
-
+                profilefile.write('sleep 10\n')
+                profilefile.write('export END_TIME=$(date +%s)\n')
+                profilefile.write('export DURATION=$((${END_TIME} - ${START_TIME}))\n')
+                profilefile.write('export START=$(date -d @${START_TIME} +"%Y-%m-%d %H:%M:%S")\n')
+                profilefile.write('export END=$(date -d @${END_TIME} +"%Y-%m-%d %H:%M:%S")\n\n')
                 for key in self.profiling.keys():
                     self.end_profiling(key, profilefile)
             else:
+                profilefile.write('export START_TIME=$(date +%s)\n')
+                profilefile.write('sleep 10\n')
                 self.run_work(profilefile, bash_options)
+                profilefile.write('sleep 10\n')
+                profilefile.write('export END_TIME=$(date +%s)\n')
+                profilefile.write('export DURATION=$((${END_TIME} - ${START_TIME}))\n')
+                profilefile.write('export START=$(date -d @${START_TIME} +"%Y-%m-%d %H:%M:%S")\n')
+                profilefile.write('export END=$(date -d @${END_TIME} +"%Y-%m-%d %H:%M:%S")\n\n')
+            profilefile.write("echo 'Run time: '$((${DURATION}/60/60))':'$((${DURATION}/60%60 ))':'$((${DURATION}%60))\n")
         return

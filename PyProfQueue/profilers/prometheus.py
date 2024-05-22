@@ -58,11 +58,11 @@ def define_initialise(profilefile: io.TextIOWrapper, profilerdict: dict = None):
     scrape_path = str(impresources.path(data, 'read_prometheus.py'))[:-19]
     profilefile.write('export PROFILE_SCRAPE={}\n'.format(scrape_path))
     profilefile.write('\n')
-    final_init_indicator = 2
+    final_init_indicator = 1
     if IP_address is None:
-        read_indicators = [0, 1, 2]
+        read_indicators = [0, 1]
     else:
-        read_indicators = [0, 2]
+        read_indicators = [0]
     indicator = 0
     with open(prometheus_file_path, 'r') as read_file:
         for number, line in enumerate(read_file):
@@ -72,6 +72,7 @@ def define_initialise(profilefile: io.TextIOWrapper, profilerdict: dict = None):
             elif line == '# *=*\n':
                 indicator += 1
                 continue
+
             if indicator in read_indicators:
                 profilefile.write(line)
     profilefile.write('# Prometheus initialisation done\n')
@@ -107,7 +108,6 @@ def define_end(profilefile: io.TextIOWrapper):
             if indicator in read_indicators:
                 profilefile.write(line)
     profilefile.write('# Prometheus final steps done\n')
-    profilefile.write('\n')
 
 
 def load_df(feather_path: str):
