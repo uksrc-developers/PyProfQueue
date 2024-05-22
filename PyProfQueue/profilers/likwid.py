@@ -23,7 +23,7 @@ def define_initialise(profilefile: io.TextIOWrapper, profilerdict: dict = None):
     ----------
     profilefile: io.TextIOWrapper = Open text file that can be written to and is being used to initiate, call and
         terminate all profiling codes that are to be executed with the user specified bash script.
-    requirements: list = dictionary containing required arguments that the profiler has or other values.
+    profilerdict: dict = dictionary containing required arguments that the profiler has or other values.
 
     Returns
     -------
@@ -63,7 +63,7 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list = [''], tmp_wor
     -------
     None
     """
-    profilefile.write('likwid-perfctr -g MEM_DP -t 10s -o ${LIK_OUTPUT} -O -f bash ' +
+    profilefile.write('likwid-perfctr -g MEM_DP -t 10s -o ${LIKWID_RUNNING_DIR}/likwid_output.txt -O -f bash ' +
                       '{} {}\n'.format(tmp_work_script, ' '.join(str(x) for x in bash_options)))
     profilefile.write('\n')
     return

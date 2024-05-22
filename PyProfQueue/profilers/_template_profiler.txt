@@ -4,10 +4,10 @@ import io
 
 from . import data
 
-_NEW_PROFILER_file_path = impresources.files(data) / "_template_commands.txt"
-_NEW_PROFILER_initEndSplit = -1
+<template_profiler>_file_path = impresources.files(data) / "<template_profiler>_commands.txt"
+<template_profiler>_initEndSplit = -1
 
-def define_initialise(profilefile: io.TextIOWrapper, requirements):
+def define_initialise(profilefile: io.TextIOWrapper, profilerdict: dict = None):
     '''
     define_initialise creates any needed variables, and writes the required arguments into the profile_file in order
     to initialise the profiling for a user, in this case that is <template_profiler>.
@@ -16,13 +16,29 @@ def define_initialise(profilefile: io.TextIOWrapper, requirements):
     ----------
     profilefile: io.TextIOWrapper = Open text file that can be written to and is being used to initiate, call and
         terminate all profiling codes that are to be executed with the user specified bash script.
-    requirements: dict = dictionary containing required arguments that the profiler has or other values.
+    profilerdict: dict = dictionary containing required arguments that the profiler has or other values.
 
     Returns
     -------
     None
     '''
-    print('Template Function')
+    global <template_profiler>_file_path
+    global <template_profiler>_initEndSplit
+    profilefile.write('# <template_profiler> initialisation declarations\n')
+    if 'requirements' in profilerdict.keys():
+        for i in profilerdict['requirements']:
+            profilefile.write(i)
+            profilefile.write('\n')
+    profilefile.write('\n')
+    profilefile.write('export <TEMPLATE_PROFILER>_RUNNING_DIR=${WORKING_DIR}/<Template_Profiler>\n')
+    with open(<template_profiler>_file_path, 'r') as read_file:
+        for number, line in enumerate(read_file):
+            if line == '# *=*\n':
+                <template_profiler>_initEndSplit = number + 1
+                break
+            profilefile.write(line)
+    profilefile.write('# <Template_Profiler> initialisation done\n')
+    profilefile.write('\n')
     return
 
 def define_run(profilefile: io.TextIOWrapper, bash_options: list, tmp_work_script: str = './tmp_workfile.sh'):
@@ -40,7 +56,9 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list, tmp_work_scrip
     -------
     None
     '''
-    print('Template Function')
+    profilefile.write('' +
+                      '{} {}\n'.format(tmp_work_script, ' '.join(str(x) for x in bash_options)))
+    profilefile.write('\n')
     return
 
 
@@ -57,5 +75,12 @@ def define_end(profilefile: io.TextIOWrapper):
     -------
     None
     '''
-    print('Template Function')
+    global <template_profiler>_file_path
+    global <template_profiler>_initEndSplit
+    profilefile.write('# <Template_Profiler> final steps declarations\n')
+    with open(<template_profiler>_file_path, 'r') as read_file:
+        for line in itertools.islice(read_file, <template_profiler>_initEndSplit, None):
+            profilefile.write(line)
+    profilefile.write('# <Template_Profiler> final steps done\n')
+    profilefile.write('\n')
     return
