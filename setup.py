@@ -7,7 +7,7 @@ long_description = (this_directory / "ReadMe.md").read_text()
 
 setup(
     name='PyProfQueue',
-    version='0.2.0',
+    version='0.2.1',
     url='https://github.com/uksrc-developers/PyProfQueue',
     author='Marcus Keil',
     author_email='marcusk050291@gmail.com',
@@ -33,8 +33,9 @@ setup(
         'Operating System :: POSIX :: Linux',
         'Programming Language :: Python :: 3.10',
     ],
-    description='A python package to inject profiling initialisation into bash scripts, translate queue options and '
-                'submit jobs',
+    description="PyProfQueue serves as a python package that can take in existing bash scripts, add prometheus "
+                "monitoring calls and likwid performance measure calls, and submit the script to an HPC queue "
+                "system on the users' behalf.",
     long_description=long_description,
     long_description_content_type='text/markdown',
 )
