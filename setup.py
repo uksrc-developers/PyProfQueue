@@ -8,7 +8,7 @@ long_description = (this_directory / "ReadMe.md").read_text()
 setup(
     name='PyProfQueue',
     version='0.2.0',
-    url='https://github.com/Marcus-Keil/PyProfQueue',
+    url='https://github.com/uksrc-developers/PyProfQueue',
     author='Marcus Keil',
     author_email='marcusk050291@gmail.com',
     license='MIT License',
