@@ -1,5 +1,6 @@
 # Built in Modules
 import importlib
+import sys
 
 
 class Script:
@@ -902,6 +903,7 @@ class Script:
             profilefile.write('  mkdir ${WORKING_DIR}\n')
             profilefile.write('fi\n')
             profilefile.write('cd ${WORKING_DIR}\n')
+            profilefile.write(f'export PYTHON_INSTANCE={sys.executable}')
             profilefile.write('\n')
             if self.profiling is not None:
                 for key in self.profiling.keys():

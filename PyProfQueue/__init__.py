@@ -1,6 +1,5 @@
 from .submission import *
 from .script import *
-from .plot import *
 
 """
 PyProfQueue.
@@ -9,6 +8,6 @@ Library to initialise Prometheus profiling and likwid performance measures withi
 them to a queue system.
 """
 
-__version__ = "0.1"
+__version__ = "0.2"
 __author__ = 'Marcus Keil'
 __credits__ = 'University College London, UK SKAO Regional Centre'

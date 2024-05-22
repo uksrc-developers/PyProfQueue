@@ -13,10 +13,22 @@ export END_TIME=$(date +%s)
 export DURATION=$((${END_TIME} - ${START_TIME}))
 export START=$(date -d @${START_TIME} +"%Y-%m-%d %H:%M:%S")
 export END=$(date -d @${END_TIME} +"%Y-%m-%d %H:%M:%S")
-${PROMETHEUS_PYTHON} ${PROFILE_SCRAPE}/read_prometheus.py -o "${PROMETHEUS_RUNNING_DIR}" -s "${START}" -e "${END}" -i "${PROMETHEUS_IP}"
+${PYTHON_INSTANCE} ${PROFILE_SCRAPE}/read_prometheus.py -o "${PROMETHEUS_RUNNING_DIR}" -s "${START}" -e "${END}" -i "${PROMETHEUS_IP}"
 # *=*
 sleep 1
 kill -TERM ${NODE_PID}
 kill -TERM ${PROMETHEUS_PID}
 # *=*
 echo 'Run time: '$((${DURATION}/60/60))':'$((${DURATION}/60%60 ))':'$((${DURATION}%60))
+echo 'Plotting Prometheus metrics to ${PROMETHEUS_RUNNING_DIR}'
+
+# Check if cwl file exists to call the script with that file
+if [ -f ${WORKING_DIR}/job_output_setup.txt ]; then
+    ${PYTHON_INSTANCE} -c "import PyProfQueue.profilers.prometheus as prom;"\
+    "df, time_series = prom.load_df('${WORKING_DIR}/Prometheus/prometheus_data');"\
+    "prom.plot_prom_profiling(df=df, time_series=time_series, name_prefix='${WORKING_DIR}/Prometheus', cwl_file='${WORKING_DIR}/job_output_setup.txt')"
+else
+    ${PYTHON_INSTANCE} -c "import PyProfQueue.profilers.prometheus as prom;"\
+    "df, time_series = prom.load_df('${WORKING_DIR}/Prometheus/prometheus_data');"\
+    "prom.plot_prom_profiling(df=df, time_series=time_series, name_prefix='${WORKING_DIR}/Prometheus')"
+fi

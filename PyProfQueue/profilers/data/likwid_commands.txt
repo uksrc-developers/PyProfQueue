@@ -9,15 +9,23 @@ echo 'SSE MFlops/s' >> ${LIK_OUTPUT}
 likwid-bench -t peakflops_sse -W N:${STREAM_SIZE}:${THREAD_COUNT} | grep 'MFlops/s:' >> ${LIK_OUTPUT}
 echo 'AVX MFlops/s' >> ${LIK_OUTPUT}
 likwid-bench -t peakflops_avx -W N:${STREAM_SIZE}:${THREAD_COUNT} | grep 'MFlops/s:' >> ${LIK_OUTPUT}
-echo 'AVX (FMA) MFlops/s' >> ${LIK_OUTPUT}
-likwid-bench -t peakflops_avx_fma -W N:${STREAM_SIZE}:${THREAD_COUNT} | grep 'MFlops/s:' >> ${LIK_OUTPUT}
 echo 'Scalar MByte/s' >> ${LIK_OUTPUT}
+export BEST_PERF=grep -oP 'MFlops/s:\s*\K\d+' ${LIK_OUTPUT} | sort -n | tail -n 1
+
 likwid-bench -t load -W N:8GB:${THREAD_COUNT} | grep 'MByte/s:' >> ${LIK_OUTPUT}
 echo 'SSE MByte/s' >> ${LIK_OUTPUT}
 likwid-bench -t load_sse -W N:8GB:${THREAD_COUNT} | grep 'MByte/s:' >> ${LIK_OUTPUT}
 echo 'AVX MByte/s' >> ${LIK_OUTPUT}
 likwid-bench -t load_avx -W N:8GB:${THREAD_COUNT} | grep 'MByte/s:' >> ${LIK_OUTPUT}
+export BEST_BAND=grep -oP 'MByte/s:\s*\K\d+' ${LIK_OUTPUT} | sort -n | tail -n 1
+
 # *=*
 sleep 1
 echo 'Program Performance' >> ${LIK_OUTPUT}
 grep -e 'MFLOP/s STAT' -e 'Operational intensity STAT' ${WORKING_DIR}/job_output_setup.txt >> ${LIK_OUTPUT}
+
+# Check if cwl file exists to call the script with that file
+export
+${PYTHON_INSTANCE} -c "import PyProfQueue.profilers.likwid as lik;"\
+"lik.plot_roof_timeseries(likwid_file='${LIKWID_RUNNING_DIR}/likwid_output.txt', "\
+"name_prefix='${WORKING_DIR}/Likwid', maxperf=${BEST_PERF}, maxband=${BEST_BAND})"
