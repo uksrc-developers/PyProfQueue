@@ -8,6 +8,6 @@ PyProfQueue serves as a python package that can take in existing bash scripts, a
 likwid performance measure calls, and submit the script to an HPC queue system on the users' behalf.
 """
 
-__version__ = "0.2.2a2"
+__version__ = "0.2.2a3"
 __author__ = 'Marcus Keil'
 __credits__ = 'University College London, UK SKA Regional Centre'

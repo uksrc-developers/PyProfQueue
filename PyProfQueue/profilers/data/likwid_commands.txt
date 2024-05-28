@@ -26,4 +26,4 @@ grep -e 'MFLOP/s STAT' -e 'Operational intensity STAT' ${WORKING_DIR}/job_output
 echo 'Plotting Likwid output as series'
 ${PYTHON_INSTANCE} -c "import PyProfQueue.profilers.likwid as lik;"\
 "lik.plot_roof_timeseries(likwid_file='${LIKWID_RUNNING_DIR}/likwid_output.txt', "\
-"name_prefix='${WORKING_DIR}/Likwid', maxperf=${BEST_PERF}, maxband=${BEST_BAND})"
+"name_prefix='${LIKWID_RUNNING_DIR}/Likwid', maxperf=${BEST_PERF}, maxband=${BEST_BAND})"
