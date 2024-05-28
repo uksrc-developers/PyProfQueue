@@ -63,7 +63,7 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list = [''], tmp_wor
     -------
     None
     """
-    profilefile.write('likwid-perfctr -g MEM_DP -t 10s -o ${LIKWID_RUNNING_DIR}/likwid_output.txt -O -f bash ' +
+    profilefile.write('likwid-perfctr -g MEM_DP -t 5m -o ${LIKWID_RUNNING_DIR}/likwid_output.txt -O -f bash ' +
                       '{} {}\n'.format(tmp_work_script, ' '.join(str(x) for x in bash_options)))
     profilefile.write('\n')
     return
@@ -163,18 +163,14 @@ def plot_roof_timeseries(likwid_file: str, name_prefix: str, maxperf: float, max
     time_series, code_opint, code_mflop = read_timeseries(likwid_file)
     points = np.array([code_opint, code_mflop]).T.reshape(-1, 1, 2)
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
-    if code_opint.mean() * maxband < maxperf:
-        percentage = int((code_mflop.mean() / (code_opint.mean() * maxband)) * 100)
-    else:
-        percentage = int((code_mflop.mean() / maxperf) * 100)
 
     if maxperf / maxband > 1:
         max_x = (maxperf / maxband) * 2
     else:
         max_x = 1
 
-    if max_x < code_opint.max():
-        max_x = code_opint
+    if max_x < code_opint.mean():
+        max_x = code_opint.mean()
 
     x_axis = np.append(np.linspace(0, maxperf / maxband, 10), max_x)
     y = np.array([x * maxband if ((x * maxband) < maxperf) else maxperf for x in x_axis])
@@ -186,7 +182,7 @@ def plot_roof_timeseries(likwid_file: str, name_prefix: str, maxperf: float, max
     lc.set_array(time_series)
     lc.set_linewidth(2)
 
-    pc = collection.RegularPolyCollection(numsides=4, offsets=points.reshape(12, 2), offset_transform=axs.transData,
+    pc = collection.RegularPolyCollection(numsides=4, offsets=points.reshape(-1, 2), offset_transform=axs.transData,
                                           cmap='viridis', norm=norm, sizes=[100] * len(time_series))
     pc.set_array(time_series)
     pc.set_label(code_name)
