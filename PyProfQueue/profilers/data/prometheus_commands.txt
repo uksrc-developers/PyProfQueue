@@ -14,10 +14,11 @@ kill -TERM ${PROMETHEUS_PID}
 echo 'Plotting Prometheus metrics to ${PROMETHEUS_RUNNING_DIR}'
 if [ -f ${WORKING_DIR}/job_output_setup.txt ]; then
     ${PYTHON_INSTANCE} -c "import PyProfQueue.profilers.prometheus as prom;"\
-    "df, time_series = prom.load_df('${WORKING_DIR}/Prometheus/prometheus_data');"\
-    "prom.plot_prom_profiling(df=df, time_series=time_series, name_prefix='${WORKING_DIR}/Prometheus', cwl_file='${WORKING_DIR}/job_output_setup.txt')"
+    "df, time_series = prom.load_df('${PROMETHEUS_RUNNING_DIR}/prometheus_data');"\
+    "prom.plot_prom_profiling(df=df, time_series=time_series, name_prefix='${PROMETHEUS_RUNNING_DIR}/Prometheus', "\
+    "cwl_file='${WORKING_DIR}/job_output_setup.txt')"
 else
     ${PYTHON_INSTANCE} -c "import PyProfQueue.profilers.prometheus as prom;"\
-    "df, time_series = prom.load_df('${WORKING_DIR}/Prometheus/prometheus_data');"\
-    "prom.plot_prom_profiling(df=df, time_series=time_series, name_prefix='${WORKING_DIR}/Prometheus')"
+    "df, time_series = prom.load_df('${PROMETHEUS_RUNNING_DIR}/prometheus_data');"\
+    "prom.plot_prom_profiling(df=df, time_series=time_series, name_prefix='${PROMETHEUS_RUNNING_DIR}/Prometheus')"
 fi
