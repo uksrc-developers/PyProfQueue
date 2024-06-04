@@ -199,16 +199,18 @@ class Script:
         current_prof = importlib.import_module(module, package="PyProfQueue")
         if hasattr(current_prof, "define_run"):
             if not self.at_execute:
-                current_prof.define_run(profilefile=profilefile,
-                                        bash_options=bash_options,
-                                        tmp_work_script=self.tmp_work_script)
+                self.works = current_prof.define_run(profilefile=profilefile,
+                                                     bash_options=bash_options,
+                                                     tmp_work_script=self.tmp_work_script,
+                                                     works=self.works,
+                                                     profilerdict=self.profiling[profiler])
                 self.at_execute = True
             else:
                 exit(f"Multiple at execution profilers were defined. Failed when adding profiler {profiler}")
 
     def run_work(self, profilefile, bash_options=['']):
         """
-        run_work_profiling writes into the profile bash script the call to run the user defined bash script. This is
+        run_work writes into the profile bash script the call to run the user defined bash script. This is
         used when no profiler needs to execute the user defined bash script.
 
         Parameters
@@ -886,11 +888,6 @@ class Script:
         Returns None
         -------
         """
-        if self.read_queue_system is not None:
-            self.tmp_work_script = tmp_work_script
-            self.create_workfile()
-        else:
-            self.tmp_work_script = self.work_script
         self.tmp_profile_script = tmp_profile_script
         with open(self.tmp_profile_script, 'w') as profilefile:
             profilefile.seek(0)
@@ -932,4 +929,11 @@ class Script:
                 profilefile.write('export START=$(date -d @${START_TIME} +"%Y-%m-%d %H:%M:%S")\n')
                 profilefile.write('export END=$(date -d @${END_TIME} +"%Y-%m-%d %H:%M:%S")\n\n')
             profilefile.write("echo 'Run time: '$((${DURATION}/60/60))':'$((${DURATION}/60%60 ))':'$((${DURATION}%60))\n")
+
+        if self.read_queue_system is not None:
+            self.tmp_work_script = tmp_work_script
+            self.create_workfile()
+        else:
+            self.tmp_work_script = self.work_script
+
         return

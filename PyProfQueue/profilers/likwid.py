@@ -47,7 +47,8 @@ def define_initialise(profilefile: io.TextIOWrapper, profilerdict: dict = None):
     profilefile.write('\n')
 
 
-def define_run(profilefile: io.TextIOWrapper, bash_options: list = [''], tmp_work_script: str = './tmp_workfile.sh'):
+def define_run(profilefile: io.TextIOWrapper, bash_options: list = [''], works: list = None,
+               tmp_work_script: str = './tmp_workfile.sh', profilerdict: dict = None):
     """
     define_run calls the user given bash script using likwid to execute and profile the work done.
 
@@ -66,7 +67,7 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list = [''], tmp_wor
     profilefile.write('likwid-perfctr -g MEM_DP -t 5m -o ${LIKWID_RUNNING_DIR}/likwid_output.txt -O -f bash ' +
                       '{} {}\n'.format(tmp_work_script, ' '.join(str(x) for x in bash_options)))
     profilefile.write('\n')
-    return
+    return works
 
 
 def define_end(profilefile: io.TextIOWrapper):

@@ -12,7 +12,8 @@ import io
 
 from . import data
 
-alpha = 0.75
+main_alpha = 0.9
+shade_alpha = 0.65
 DPI = 100
 avg_xSize, avg_ySize = 50, 10
 MeanMult = 3
@@ -118,13 +119,16 @@ def load_df(feather_path: str):
 
 
 def cwl_pass(cwl_output: str):
-    df_steps = pd.DataFrame(columns=['Step', 'Start', 'End'])
+    df_steps = pd.DataFrame(columns=['Step', 'Start', 'End', 'Status'])
     workflow_steps = []
     with open(cwl_output) as f:
         for line in f.readlines():
-            if 'starting step' in line or ('[step ' in line and 'completed success' in line) or (
-                    '[step ' in line and 'completed skipped' in line) or (
-                    '[step ' in line and 'completed permanentFail' in line):
+            if 'starting step' in line or (
+                    '[workflow ' in line and '] start\n' in line) or (
+                    ('[step ' in line or '[workflow ' in line) and 'completed success' in line) or (
+                    ('[step ' in line or '[workflow ' in line) and 'completed skipped' in line) or (
+                    ('[step ' in line or '[workflow ' in line) and 'completed permanentFail' in line):
+                    #'completed permanentFail' in line):
                 bracketStart = [i for i, x in enumerate(line) if x == '[']
                 bracketEnd = [i for i, x in enumerate(line) if x == ']']
                 time = tz.localize(datetime.strptime(line[bracketStart[1] + 1:bracketEnd[0]], '%Y-%m-%d %H:%M:%S'))
@@ -132,24 +136,42 @@ def cwl_pass(cwl_output: str):
                     df_steps = pd.concat(
                         [df_steps, pd.DataFrame([{'Step': line[line.index("starting step") + 14:-1], 'Start': time}])],
                         ignore_index=True)
-                elif 'completed success' in line:
-                    df_steps.loc[df_steps['Step'] == line[line.index('[step') + 6:bracketEnd[1]], 'End'] = time
-                    df_steps.loc[df_steps['Step'] == line[line.index('[step') + 6:bracketEnd[1]], 'Status'] = 'g'
-                elif 'completed skipped' in line:
-                    df_steps.loc[df_steps['Step'] == line[line.index('[step') + 6:bracketEnd[1]], 'End'] = time
-                    df_steps.loc[df_steps['Step'] == line[line.index('[step') + 6:bracketEnd[1]], 'Status'] = 'y'
-                elif 'completed permanentFail' in line:
-                    df_steps.loc[df_steps['Step'] == line[line.index('[step') + 6:bracketEnd[1]], 'End'] = time
-                    df_steps.loc[df_steps['Step'] == line[line.index('[step') + 6:bracketEnd[1]], 'Status'] = 'r'
-            if '[workflow' in line:
-                bracketStart = [i for i, x in enumerate(line) if x == '[']
-                bracketEnd = [i for i, x in enumerate(line) if x == ']']
-                workflow = line[bracketStart[5] + 10: bracketEnd[1]]
-                if len(workflow) > 1:
-                    if workflow not in workflow_steps:
-                        workflow_steps += [workflow]
-                        df_steps = df_steps.drop(df_steps[df_steps['Step'] == workflow].index)
+                elif '[workflow ' in line and '] start\n' in line:
+                    workflow = line[line.index("[workflow ") + 10:line.index("] start")]
+                    df_steps = pd.concat([df_steps, pd.DataFrame([{'Step': workflow, 'Start': time}])],
+                                         ignore_index=True)
+                    if len(workflow) > 1:
+                        if workflow not in workflow_steps:
+                            workflow_steps += [workflow]
+                else:
+                    if '[step ' in line:
+                        search = '[step '
+                    elif '[workflow ' in line:
+                        search = '[workflow '
+                    if 'completed success' in line:
+                        if line[line.index('[step') + 6:bracketEnd[1]] in workflow_steps:
+                            df_steps.loc[df_steps['Step'] == line[line.index(search) + 10:bracketEnd[1]], 'End'] = time
+                            df_steps.loc[df_steps['Step'] == line[line.index(search) + 10:bracketEnd[1]], 'Status'] = 'b'
+                        else:
+                            df_steps.loc[df_steps['Step'] == line[line.index(search) + 6:bracketEnd[1]], 'End'] = time
+                            df_steps.loc[df_steps['Step'] == line[line.index(search) + 6:bracketEnd[1]], 'Status'] = 'g'
+                    elif 'completed skipped' in line:
+                        if search == '[workflow ':
+                            df_steps.loc[df_steps['Step'] == line[line.index(search) + 10:bracketEnd[1]], 'End'] = time
+                            df_steps.loc[df_steps['Step'] == line[line.index(search) + 10:bracketEnd[1]], 'Status'] = 'm'
+                        else:
+                            df_steps.loc[df_steps['Step'] == line[line.index(search) + 6:bracketEnd[1]], 'End'] = time
+                            df_steps.loc[df_steps['Step'] == line[line.index(search) + 6:bracketEnd[1]], 'Status'] = 'y'
+                    elif 'completed permanentFail' in line:
+                        if search == '[workflow ':
+                            df_steps.loc[df_steps['Step'] == line[line.index(search) + 10:bracketEnd[1]], 'End'] = time
+                            df_steps.loc[df_steps['Step'] == line[line.index(search) + 10:bracketEnd[1]], 'Status'] = 'k'
+                        else:
+                            df_steps.loc[df_steps['Step'] == line[line.index(search) + 6:bracketEnd[1]], 'End'] = time
+                            df_steps.loc[df_steps['Step'] == line[line.index(search) + 6:bracketEnd[1]], 'Status'] = 'r'
     df_steps['Start'] = pd.to_datetime(df_steps['Start'])
+    df_steps.loc[df_steps['Status'].isnull(), 'Status'] = 'c'
+    df_steps.loc[df_steps['End'].isnull(), 'End'] = df_steps.loc[~df_steps['End'].isnull()]['End'].max()
     df_steps['End'] = pd.to_datetime(df_steps['End'])
     df_steps['Time'] = (df_steps['End'] - df_steps['Start']).dt.total_seconds()
     return df_steps
@@ -157,24 +179,26 @@ def cwl_pass(cwl_output: str):
 
 def plot_shades(df_steps: pd.DataFrame, label: bool = True):
     for index, row in df_steps.iterrows():
-        try:
-            c = next(color)
-        except:
-            color = iter(cm.terrain(np.linspace(0, 0.9, 8)))
-            c = next(color)
-        try:
-            h = next(hatch)
-        except:
-            hatch = iter(['/', '|', '-', '+', 'x', 'O', '*'])
-            h = next(hatch)
-        plt.vlines(row['Start'], 0, 100, colors=c, linestyle='--')
-        plt.vlines(row['End'], 0, 100, colors=c, linestyle='--')
-        if label:
-            plt.axvspan(row['Start'], row['End'] + timedelta(seconds=10), 0, 100,
-                        alpha=alpha, color=c, label=row['Step'], linestyle='--', hatch=h)
-        else:
-            plt.axvspan(row['Start'], row['End'] + timedelta(seconds=10), 0, 100,
-                        alpha=alpha, color=c, linestyle='--', hatch=h)
+        if row['Status'] != 'b' and row['Status'] != 'm' and row['Status'] != 'c':
+            try:
+                c = next(color)
+            except:
+                color = iter(cm.terrain(np.linspace(0, 0.9, 8)))
+                c = next(color)
+            try:
+                h = next(hatch)
+            except:
+                hatch = iter(['/', '|', '-', '+', 'x', 'O', '*'])
+                h = next(hatch)
+
+            plt.vlines(row['Start'], 0, 100, colors=c, linestyle='--')
+            plt.vlines(row['End'], 0, 100, colors=c, linestyle='--')
+            if label:
+                plt.axvspan(row['Start'], row['End'] + timedelta(seconds=10), 0, 100,
+                            alpha=shade_alpha, color=c, label=row['Step'], linestyle='--', hatch=h)
+            else:
+                plt.axvspan(row['Start'], row['End'] + timedelta(seconds=10), 0, 100,
+                            alpha=shade_alpha, color=c, linestyle='--', hatch=h)
 
 
 def plot_prom_profiling(df: pd.DataFrame, time_series: np.array, name_prefix: str,
@@ -195,16 +219,16 @@ def plot_prom_profiling(df: pd.DataFrame, time_series: np.array, name_prefix: st
         plt.fill_between(time_series,
                          df[df.filter(like='CPU Usage:').columns].mean(axis='columns') -
                          df[df.filter(like='CPU IO Wait:').columns].mean(axis='columns'),
-                         0, label="Mean CPU usage", linestyle='-', alpha=alpha)
+                         0, label="Mean CPU usage", linestyle='-', alpha=main_alpha)
         if df[df.filter(like='CPU IO Wait:').columns].mean().sum() > 0.1:
             plt.fill_between(time_series,
                              df[df.filter(like='CPU Usage:').columns].mean(axis='columns'),
                              df[df.filter(like='CPU Usage:').columns].mean(axis='columns') -
                              df[df.filter(like='CPU IO Wait:').columns].mean(axis='columns'),
-                             label="Mean CPU IO Wait", linestyle='-', alpha=alpha, color='red')
+                             label="Mean CPU IO Wait", linestyle='-', alpha=main_alpha, color='red')
         plt.ylim([0, 102])
         plt.xlim([time_series[0], time_series[-1]])
-        plt.legend(ncol=LegCols, prop={'size': 20}, framealpha=1, bbox_to_anchor=(0.96, -0.1))
+        plt.legend(ncol=LegCols, prop={'size': 20}, framealpha=1, bbox_to_anchor=(0.5, -0.1), loc='upper center')
         plt.xlabel("Time", fontsize=20)
         plt.xticks(fontsize=20)
         plt.ylabel("CPU usage (%)", fontsize=20)
@@ -235,11 +259,11 @@ def plot_prom_profiling(df: pd.DataFrame, time_series: np.array, name_prefix: st
             ax.xaxis.set_major_formatter(mdt.DateFormatter('%d-%T'))
             ax.hlines(y=100, linestyle='--', xmin=time_series[0], xmax=time_series[-1], alpha=0.25)
             ax.fill_between(time_series, df[cpuUsage] - df['CPU IO Wait' + cpu_number],
-                            y2=0, label=cpuUsage, linestyle='-', alpha=alpha)
-            if df['CPU IO Wait' + cpu_number].mean() > 0.1:
+                            y2=0, label=cpuUsage, linestyle='-', alpha=main_alpha)
+            if df['CPU IO Wait' + cpu_number].max() > 0.1:
                 ax.fill_between(time_series, df[cpuUsage],
                                 df[cpuUsage] - df['CPU IO Wait' + cpu_number],
-                                label=cpuUsage, linestyle='-', alpha=alpha, color='red')
+                                label=cpuUsage, linestyle='-', alpha=main_alpha, color='red')
             ax.set_ylim([0, 105])
             ax.set_xlim([time_series[0], time_series[-1]])
             ax.yaxis.set_visible(False)
@@ -253,9 +277,9 @@ def plot_prom_profiling(df: pd.DataFrame, time_series: np.array, name_prefix: st
         plt.gca().xaxis.set_major_formatter(mdt.DateFormatter('%y-%m-%d %T'))
         if cwl_file is not None:
             plot_shades(df_steps, label)
-        plt.fill_between(time_series, df['Memory Usage [GB]'], 0, label="RAM usage [GB]", linestyle='-', alpha=alpha)
-        plt.legend(ncol=LegCols, prop={'size': 20}, framealpha=1, bbox_to_anchor=(0.96, -0.1))
-        plt.ylim([0, df['Memory Usage [GB]'].max() * 1.25])
+        plt.fill_between(time_series, df['Memory Usage [GB]'], 0, label="RAM usage [GB]", linestyle='-', alpha=main_alpha)
+        plt.legend(ncol=LegCols, prop={'size': 20}, framealpha=1, bbox_to_anchor=(0.5, -0.1), loc='upper center')
+        plt.ylim([0, df['Memory Total [GB]'].max()])
         plt.xlim([time_series[0], time_series[-1]])
         plt.xlabel("Time", fontsize=20)
         plt.xticks(fontsize=20)
@@ -272,14 +296,14 @@ def plot_prom_profiling(df: pd.DataFrame, time_series: np.array, name_prefix: st
         maxY = 0
         minY = 0
         for column in df.filter(like='Received:').columns:
-            plt.fill_between(time_series, df[column], 0, label=column, linestyle='-', alpha=alpha)
+            plt.fill_between(time_series, df[column], 0, label=column, linestyle='-', alpha=main_alpha)
             if network_three_mean:
                 maxY = df[column].mean() * 3
             else:
                 if maxY < df[column].max():
                     maxY = df[column].max()
         for column in df.filter(like='Sent:').columns:
-            plt.fill_between(time_series, -df[column], 0, label=column, linestyle='-', alpha=alpha)
+            plt.fill_between(time_series, -df[column], 0, label=column, linestyle='-', alpha=main_alpha)
             if network_three_mean:
                 minY = df[column].mean() * 3
             else:
@@ -287,7 +311,7 @@ def plot_prom_profiling(df: pd.DataFrame, time_series: np.array, name_prefix: st
                     minY = df[column].max()
         plt.vlines(0, time_series.min(), time_series.max())
         plt.ylim([-minY * 1.25, maxY * 1.25])
-        plt.legend(ncol=LegCols, prop={'size': 20}, framealpha=1, bbox_to_anchor=(0.96, -0.1))
+        plt.legend(ncol=LegCols, prop={'size': 20}, framealpha=1, bbox_to_anchor=(0.5, -0.1), loc='upper center')
         plt.xlim([time_series[0], time_series[-1]])
         plt.xlabel("Time", fontsize=20)
         plt.xticks(fontsize=20)

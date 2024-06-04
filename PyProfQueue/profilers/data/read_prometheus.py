@@ -80,6 +80,12 @@ def main():
                                         given_name='CPU IO Wait:', name_convention='cpu')
     Full_df = pandas_merge(dictionary=cpu_iowait_dict, dataframe=Full_df)
 
+    max_memory_dict = prometheus_scrape(connection=api,
+                                    command='(node_memory_MemTotal_bytes)/(1000000000)',
+                                    begin=start_time, end=end_time,
+                                    given_name='Memory Total [GB]')
+    Full_df = pandas_merge(dictionary=max_memory_dict, dataframe=Full_df)
+
     memory_dict = prometheus_scrape(connection=api,
                                     command='(node_memory_MemTotal_bytes-node_memory_MemAvailable_bytes)/(1000000000)',
                                     begin=start_time, end=end_time,
