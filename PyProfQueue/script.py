@@ -889,6 +889,7 @@ class Script:
         -------
         """
         self.tmp_profile_script = tmp_profile_script
+        self.tmp_work_script = tmp_work_script
         with open(self.tmp_profile_script, 'w') as profilefile:
             profilefile.seek(0)
             profilefile.write('#!/bin/bash\n')
@@ -931,7 +932,6 @@ class Script:
             profilefile.write("echo 'Run time: '$((${DURATION}/60/60))':'$((${DURATION}/60%60 ))':'$((${DURATION}%60))\n")
 
         if self.read_queue_system is not None:
-            self.tmp_work_script = tmp_work_script
             self.create_workfile()
         else:
             self.tmp_work_script = self.work_script
