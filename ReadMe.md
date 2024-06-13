@@ -17,8 +17,14 @@ options provided by the user as well as any additionally required commands to in
 likwid performance measuring of the users bash script.
 ## Component details
 ___
-The two main components for users of PyProfQueue are the *Script* class and the *submit* function.
+The user facing components of PyProfQueue are the *Script* class and *submit* function.
+
+<details>
+
+<summary>Script Class</summary>
+
 ### Script Class
+
 The *Script* class is used in the following way, and the following options are available:
 ```
 script = PyProfQueue.Script(queue_system: str,
@@ -75,7 +81,13 @@ is allowed to run for 24 hours. So we use the following:
 script.change_options(queue_options={'time':'24:00:00'})
 ```
 *change_options* does not overwrite existing options if they aren't specifically listed to be changed.
-### submit function
+</details>
+
+
+<details>
+
+<summary>Submit Function</summary>
+### Submit Function
 The *submit* function serves as the point of execution for PyProfQueue. When called, it will take the given *Script* 
 object, and submit it to the queue system the *Script* object is configured for.
 ```
@@ -94,6 +106,67 @@ PyProfQueue.submit(script: Script,
 |   bash_options (Optional)   | List of options that the user provided bash script may require. Defaults to [' '].                                                                                                                                 |
 |  leave_scripts (Optional)   | Boolean to determine if the temporary scripts should be left or removed after submission. Defaults to True                                                                                                         |
 |       test (Optional)       | Boolean to determine if the script should be submitted, or if the command that would be used should be printed to the terminal. Additionally, this leaves the temporary scripts in tackt so they can be inspected. |
+
+</details>
+
+___
+##  In- and Outputs
+___
+### Inputs
+The inputs to the *Script* class and *submit* function have already been described above, what has not been described
+in detail in the input file that users provide. Users must provide the bash script that they wish to profile and submit
+to a queue system. If a bash script with no queue options is provided, then the *read_queue_system* option can be left
+off, or set to None. In this case, unless both *read_queue_system* and *queue_system* are set to None, *queue_options* 
+have to be provided. If queue options are available in the script then *read_queue_system* should be set to the name
+of the queue system that the original script was intended for. In order to use profiling tools, a dictionary has to 
+be provided to the *profiling* option of the *Script* class. The keys of the dictionaries are the name of the profiling
+tools to be used, and the values of the dictionary is a dictionary of required and optional arguments for each profiler.
+As long as there is not clashes between profiling tools, multiple can be used at once. We list examples of inputs below.
+
+<details>
+<summary>Likwid Inputs</summary>
+
+#### Likwid specific inputs
+In order to use likwid, the key 'likwid' needs to be used in the *profiling* option for the *Script* object. This key 
+then needs to have a value of "requirements" which contains a list of all commands that need to be executed prior to 
+being able to use likwid on the HPC system the script is being submitted to. If, for example, a simple module loading
+is required, it could look like this
+```python
+profiling = {"likwid": {"requirements":["module load likwid"]}}
+```
+</details>
+<details>
+<summary>Prometheus Inputs</summary>
+
+#### Prometheus specific inputs
+In order to use prometheus, the key 'prometheus' needs to be used in the *profiling* option for the *Script* object. 
+This key then needs to have a value of "requirements" which has to contain the path to the prometheus instance to use, 
+or it has to contain "ip_address" which then has an IP address, stored as a string, of a pre-existing prometheus
+instance that can be scraped. Here is an example of both, where "<path/to/prometheus>" is used to represent the path
+to the prometheus instance the user would want to use.
+```python
+profiling = {"prometheus": {"requirements":["export PROMETHEUS_SOFTWARE=<path/to/prometheus>"]}}
+# OR
+profiling = {"prometheus": {"ip_address":["127.0.0.1:9090"]}}
+```
+</details>
+
+### Outputs
+The output of the *Script* class, is an object that contains all the given options, file paths and other variables 
+needed in order to create the bash scripts that can be submitted to a queue system. The outputs from *submit* 
+depend on the given options. If the *test* and *leave_scripts* are set to **False**, then the output of *submit* is 
+the same as the output of the submission command for the respective queue system being used. If *test* or 
+*leave_scripts* are set to **True** then the output includes two bash scripts. The first contains the original work 
+to be performed, the other contains all the necessary variable declarations and command calls in order to perform 
+the profiling of the given bash script. It is the profiling script that is submitted to the queue. Additionally,
+if *test* is **True**, then the command line will output what command would be used in order to submit the job, but
+the command will not actually be called.
+
+Where profilers are set up to return plots, the outputs are .png files. While the plots are autogenerated in most cases,
+it is possible to replot them in post using the functions found within the respective python scripts for a profiler.
+
+<details>
+<summary>Prometheus Plotting Functions</summary>
 
 ### plot.load_df function
 This function reads the prometheus database created by using prometheus profiling with *PyProfQueue* and stores it 
@@ -120,6 +193,10 @@ This function plots the results of a prometheus profiling effort. It is compatib
 |     cwl_file (Optional)      | Path to a text file containing the ouput of CWL, if it was used to run a workflow. This is used to shade when each step occured. |
 |       label (Optional)       | Boolean to label each CWL step on shaded graphs if cwl_file was provided                                                         |
 |       gant (Optional)        | Boolean on if a gant chart like plot should be created if CWL was used to run a workflow                                         |
+</details>
+
+<details>
+<summary>Likwid Plotting Functions</summary>
 
 ### plot.plot_roof function
 This function plots the results of a likwid profiling effort.
@@ -132,60 +209,14 @@ This function plots the results of a likwid profiling effort.
 | code_name (Optional)  | String of what to call the code in the legend of the plot            |
 | code_mflop (Optional) | Float of the codes MFLOP/s listed in the likwid output               |
 | code_opint (Optional) | Float of the codes Operational Intensity listed in the likwid output |
+</details>
 
-___
-##  In- and Outputs
-___
-### Inputs
-The inputs to the *Script* class and *submit* function have already been described above, what has not been described
-in detail in the input file that users provide. Users must provide the bash script that they wish to profile and submit
-to a queue system. If a bash script with no queue options is provided, then the *read_queue_system* option can be left
-off, or set to None. In this case, unless both *read_queue_system* and *queue_system* are set to None, *queue_options* 
-have to be provided. If queue options are available in the script then *read_queue_system* should be set to the name
-of the queue system that the original script was intended for.
-#### Likwid specific inputs
-In order to use likwid, the key 'likwid' needs to be used in the *profiling* option for the *Script* object. This key 
-then needs to have a value of "requirements" which contains a list of all commands that need to be executed prior to 
-being able to use likwid on the HPC system the script is being submitted to. If, for example, a simple module loading
-is required, it could look like this
-```python
-profiling = {"likwid": {"requirements":["module load likwid"]}}
-```
-#### Prometheus specific inputs
-In order to use prometheus, the key 'prometheus' needs to be used in the *profiling* option for the *Script* object. 
-This key then needs to have a value of "requirements" which has to contain the path to the prometheus instance to use, 
-or it has to contain "ip_address" which then has an IP address, stored as a string, of a pre-existing prometheus
-instance that can be scraped. Here is an example of both, where "<path/to/prometheus>" is used to represent the path
-to the prometheus instance the user would want to use.
-```python
-profiling = {"prometheus": {"requirements":["export PROMETHEUS_SOFTWARE=<path/to/prometheus>"]}}
-# OR
-profiling = {"prometheus": {"ip_address":["127.0.0.1:9090"]}}
-```
-
-#### Both likwid and prometheus
-Here is an example of how the dictionary could look, if both likwid and prometheus were to be used:
-```python
-profiling = {"likwid": {"requirements":["module load likwid"]}, 
-             "prometheus": {"requirements":["export PROMETHEUS_SOFTWARE=<path/to/prometheus>"]}
-             }
-```
-
-### Outputs
-The output of the *Script* class, is an object that contains all the given options, file paths and other variables 
-needed in order to create the bash scripts that can be submitted to a queue system. The outputs from *submit* 
-depend on the given options. If the *test* and *leave_scripts* are set to **False**, then the output of *submit* is 
-the same as the output of the submission command for the respective queue system being used. If *test* or 
-*leave_scripts* are set to **True** then the output includes two bash scripts. The first contains the original work 
-to be performed, the other contains all the necessary variable declarations and command calls in order to perform 
-the profiling of the given bash script. It is the profiling script that is submitted to the queue. Additionally,
-if *test* is **True**, then the command line will output what command would be used in order to submit the job, but
-the command will not actually be called.
-
-For the plotting functions, the outputs are .png files of each requested plot.
 ___
 ## Example usage
 ___
+<details>
+<summary>Detailed example</summary>
+
 Let us look at a toy example to show how this script would be used. Let us assume we have an HPC system that uses slurm.
 This system requires loading the likwid module if we want to use it, and we have downloaded the prometheus codes to the
 directory **/home/Software** and ensured that we can execute both without sudo commands. Let us assume we have the 
@@ -260,11 +291,15 @@ state how the test_workfile.sh is called within test_profilefile.sh
 ```bash
 likwid-perfctr -g MEM_DP -f bash ./test_workfile.sh  "Hello " "World!"
 ```
-___
+</details>
 
+___
 ## Software Requirements
 ___
-### Python Requirements
+
+<details>
+<summary>Python Requirements</summary>
+
 For the sake of PyProfQueue, the required python version is at least 3.10, as this package utilises the match 
 functionality.
 - numpy
@@ -273,7 +308,12 @@ functionality.
 - matplotlib
 - promql_http_api==0.3.3
 - pandas<=2.2.1
-### Non Python Requirements
+</details>
+
+
+<details>
+<summary>Non Python Requirements</summary>
+
 In addition to the python requirements listed above, PyProfQueue also needs to have the following software on the system 
 to which the job will be submitted:
 - [node_exporter](https://prometheus.io/docs/guides/node-exporter/)
@@ -299,11 +339,9 @@ command without sudo rights:
 ```
 likwid-perfctr -g MEM_DP -f <executable>
 ```
-___
-## Container Compatibility
-___
-This package does not require a container and since it submits to a queue, we do not know how recommended it is to 
-use it from within a container.
+
+</details>
+
 ___
 ## Hardware Requirements
 ___
@@ -312,6 +350,10 @@ and likwid.
 ___
 ## Directory Structure
 ___
+
+<details>
+<summary>File Structure Diagram</summary>
+
 ```md
 PyProfQueue
 ├── PyProfQueue
@@ -332,6 +374,8 @@ PyProfQueue
 ├── ReadMe.md
 └── setup.py
 ```
+</details>
+
 The directory *PyProfQueue/PyProfQueue* contains the *plot.py*. *script.py* and *submission.py* scripts which contain the 
 definition of the plotting functions, *Script* class and *submission()* function respectively.
 
