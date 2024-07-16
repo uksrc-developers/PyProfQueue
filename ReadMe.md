@@ -43,27 +43,8 @@ script = PyProfQueue.Script(queue_system: str,
 |    profiling (Optional)    | Dictionary with keys representing which profiler to use with values of dictionaries listing profiler options such as "requirements"|
 
 
-The options *queue_options* that PyProfQueue currently supports are:
-- 'user'
-  - The user ID of the system with which to submit the job (requires admin rights usually)
-- 'nodes'
-  - The number of nodes to be requested.
-- 'cores'
-  - The number of cores each task will need.
-- 'tasks'
-  - The number of tasks to perform.
-- 'time'
-  - The walltime this job is allowed to run for in hh:mm:ss.
-- 'partition'
-  - The specific queue/partition to submit to.
-- 'account'
-  - The account to charge for the used resources.
-- 'subname'
-  - Name of the submitted job.
-- 'workdir'
-  - The directory in which the work should be done.
-- 'output'
-  - The file, including path, to write the STDOUT to.
+The queue options that PyProfQueue supports are dependent on the batch system, for more details, we advise looking 
+at the dictionaries in ./PyProfQueue/batch_systems/<batch system of interets>.py in order to find option compatibility.
 
 Any *Script* object, then comes with three additional methods intended to be used by users. These methods are:
 
@@ -80,7 +61,7 @@ is allowed to run for 24 hours. So we use the following:
 ```
 script.change_options(queue_options={'time':'24:00:00'})
 ```
-*change_options* does not overwrite existing options if they aren't specifically listed to be changed.
+*change_options* maintains all previous options that are not listed in the dictionary passed to *change_options*.
 </details>
 
 
@@ -101,9 +82,9 @@ PyProfQueue.submit(script: Script,
 |           Option            | Description                                                                                                                                                                                                        |
 |:---------------------------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 |           script            | *Script* object to be submitted to queue                                                                                                                                                                           |
-| tmp_work_script (Optional)  | Desired name of temporary work script. Defaults to "tmp_workfile.sh".                                                                                                                                              |
-|tmp_profile_script (Optional)| Desired name of temporary profile script. Defaults to "tmp_profilefile.sh".                                                                                                                                        |
-|   bash_options (Optional)   | List of options that the user provided bash script may require. Defaults to [' '].                                                                                                                                 |
+| tmp_work_script (Optional)  | Desired name of temporary work script. Defaults to "./tmp_workfile.sh".                                                                                                                                              |
+|tmp_profile_script (Optional)| Desired name of temporary profile script. Defaults to "./tmp_profilefile.sh".                                                                                                                                        |
+|   bash_options (Optional)   | List of options that the user provided bash script may require. Defaults to [''].                                                                                                                                 |
 |  leave_scripts (Optional)   | Boolean to determine if the temporary scripts should be left or removed after submission. Defaults to True                                                                                                         |
 |       test (Optional)       | Boolean to determine if the script should be submitted, or if the command that would be used should be printed to the terminal. Additionally, this leaves the temporary scripts in tackt so they can be inspected. |
 
@@ -130,7 +111,7 @@ As long as there is not clashes between profiling tools, multiple can be used at
 In order to use likwid, the key 'likwid' needs to be used in the *profiling* option for the *Script* object. This key 
 then needs to have a value of "requirements" which contains a list of all commands that need to be executed prior to 
 being able to use likwid on the HPC system the script is being submitted to. If, for example, a simple module loading
-is required, it could look like this
+command is required, it could look like this
 ```python
 profiling = {"likwid": {"requirements":["module load likwid"]}}
 ```
@@ -167,8 +148,10 @@ it is possible to replot them in post using the functions found within the respe
 
 <details>
 <summary>Prometheus Plotting Functions</summary>
+The following plot functions are called automatically by the script that PyProfQueue creates, but can be called in post
+by users if so desired.
 
-### plot.load_df function
+### profilers.prometheus.load_df function
 This function reads the prometheus database created by using prometheus profiling with *PyProfQueue* and stores it 
 into a pandas.DataFrame. This then has the time converted into the format of "yyyy-mm-dd HH:MM:SS" for user readability.
 The times at which datapoints exist are then also given out as a numpy.array on top of returning the dataframe. 
@@ -176,7 +159,7 @@ The times at which datapoints exist are then also given out as a numpy.array on 
 |    Option    | Description                             |
 |:------------:|-----------------------------------------|
 | feather_path | path to the scraped prometheus database |
-### plot.plot_profiling function
+### profilers.prometheus.plot_prom_profiling function
 This function plots the results of a prometheus profiling effort. It is compatible with additional features for 
 [Common Workflow Language](https://www.commonwl.org/) (CWL) workflows, if the output from a CWL call is saved to a file.
 
@@ -185,21 +168,22 @@ This function plots the results of a prometheus profiling effort. It is compatib
 |              df              | pandas.DataFrame of the prometheus profiling data. Obtained from load_df                                                         |
 |         time_series          | numpy.array of the times at which data was collected. Obtained from load_df                                                      |
 |         name_prefix          | Desired path and name prefix for the plots                                                                                       |
-|network_three_mean (Optional) | Boolean on if the network y-limit should be restricted to three times the mean value                                             |
 |     mean_cpu (Optional)      | Boolean on if the mean_cpu usage should be plotted                                                                               |
 |      all_cpu (Optional)      | Boolean on if all cpu usages should be plotted                                                                                   |
 |      memory (Optional)       | Boolean on if the memory usage should be plotted                                                                                 |
 |      network (Optional)      | Boolean on if the network usage should be plotted                                                                                |
+|network_three_mean (Optional) | Boolean on if the network y-limit should be restricted to three times the mean value                                             |
+|       gant (Optional)        | Boolean on if a gant chart like plot should be created if CWL was used to run a workflow                                         |
 |     cwl_file (Optional)      | Path to a text file containing the ouput of CWL, if it was used to run a workflow. This is used to shade when each step occured. |
 |       label (Optional)       | Boolean to label each CWL step on shaded graphs if cwl_file was provided                                                         |
-|       gant (Optional)        | Boolean on if a gant chart like plot should be created if CWL was used to run a workflow                                         |
 </details>
 
 <details>
 <summary>Likwid Plotting Functions</summary>
 
-### plot.plot_roof function
-This function plots the results of a likwid profiling effort.
+### profilers.likwid.plot_likwid_roof_single function
+This function plots the results of a likwid profiling effort as a single point, meaning that it is the average FLOP/s
+and average operational intensity over the entire duration of the job.
 
 |        Option         | Description                                                          |
 |:---------------------:|----------------------------------------------------------------------|
@@ -209,6 +193,18 @@ This function plots the results of a likwid profiling effort.
 | code_name (Optional)  | String of what to call the code in the legend of the plot            |
 | code_mflop (Optional) | Float of the codes MFLOP/s listed in the likwid output               |
 | code_opint (Optional) | Float of the codes Operational Intensity listed in the likwid output |
+
+### profilers.likwid.plot_roof_timeseries function
+This function plots the results of a likwid profiling effort as a single point, meaning that it is the average FLOP/s
+and average operational intensity over the entire duration of the job. The performance is plotted in Log scale.
+
+|        Option         | Description                                                        |
+|:---------------------:|--------------------------------------------------------------------|
+|      likwid_file      | Path to likwid output file                                         |
+|      name_prefix      | Desired path and name prefix for the plot                          |
+|        maxperf        | Float of the maximum performance listed in likwid output file      |
+|        maxband        | Float of the maximum memory bandwidth listed in likwid output file |
+| code_name (Optional)  | String of what to call the code in the legend of the plot          |
 </details>
 
 ___
@@ -247,19 +243,14 @@ import PyProfQueue as ppq
 ProfileScript = ppq.Script(queue_system='slurm',
                            work_script='./tmp_workfile.sh',
                            queue_options={
-                               'workdir': '/home/queue_work/%x.%j',
-                               'account': 'example_project',
-                               'cores': '16',
-                               'nodes': '1',
-                               'output': '/home/queue_work/%x.%j/output.out',
-                               'partition': 'example_partition',
-                               'name': 'TestSubmission',
-                               'tasks': '1',
-                               'time': '00:05:00'},
-                           profiling={"likwid": {'requirements': ['module load oneAPI_comp/2021.1.0',
-                                                                  'module load likwid/5.2.0']},
-                                      "prometheus": {'requirements': ['export PROMETHEUS_SOFTWARE=/home/Software']}
-                                      })
+                             'workdir': '/home/queue_work/%x.%j',
+                             'job_name': 'NewName'},
+                           profiling={
+                             "likwid": {'requirements': ['module load oneAPI_comp/2021.1.0',
+                                                         'module load likwid/5.2.0']},
+                             "prometheus": {'requirements': ['export PROMETHEUS_SOFTWARE=/home/Software']}
+                           }
+                           )
 
 ppq.submit(ProfileScript, 
            tmp_work_script = './test_workfile.sh',
@@ -273,7 +264,7 @@ The following command would be used to submit a job to the queue:
 sbatch ./test_profilefile.sh
 ```
 Following this, it has created two files, test_workfile.sh and test_profilefile.sh. test_workfile.sh should look like
-the original bash script provided by the user, but with the options removed:
+the original bash script provided by the user, but with the options removed, in our case:
 ```bash
 #!/bin/bash
 
@@ -286,10 +277,10 @@ echo ${2}
 ```
 
 While test_profiliefile.sh contains all the necessary initialisations and terminations for prometheus and likwid to run
-and provide the correct outputs. The entire file won't be listed here as it is quite length, however we will 
+and provide plots and output files. The entire file won't be listed here as it is quite length, however we will 
 state how the test_workfile.sh is called within test_profilefile.sh
 ```bash
-likwid-perfctr -g MEM_DP -f bash ./test_workfile.sh  "Hello " "World!"
+likwid-perfctr -g MEM_DP -t 300s -o ${LIKWID_RUNNING_DIR}/likwid_output.txt -O -f bash ./test_workfile.sh  "Hello " "World!"
 ```
 </details>
 
@@ -334,10 +325,10 @@ ${PROMETHEUS_SOFTWARE}
 Where *node_exporter/node_exporter* is the executable for node_exporter, *prometheus/prometheus* is the executable for 
 prometheus, and *prometheus/prometheus.yml* is the configuration file to be used for prometheus.
 
-For the sake of likwid, it needs to be installed or loaded in, in such a way that a user could run the following 
+For the sake of likwid, it needs to be installed or loaded, in such a way that a user could run the following 
 command without sudo rights:
 ```
-likwid-perfctr -g MEM_DP -f <executable>
+likwid-perfctr -g MEM_DP -t 300s <output directory> <executable> <options for executable>
 ```
 
 </details>
@@ -357,16 +348,19 @@ ___
 ```md
 PyProfQueue
 ├── PyProfQueue
+│   ├── batch_systems
+│   │   ├── pbs.py
+│   │   ├── slurm.py
+│   │   └── _template_batch.txt
 │   ├── profilers
 │   │   ├── data
 │   │   │   ├── read_prometheus.py
-│   │   │   ├── _template_commands.txt
 │   │   │   ├── likwid_commands.txt
-│   │   │   └── prometheus_commands.txt
-│   │   ├── __init__.py
-│   │   ├── _template_profiler.py
+│   │   │   ├── prometheus_commands.txt
+│   │   │   └── _template_commands.txt
 │   │   ├── likwid.py
-│   │   └── prometheus.py
+│   │   ├── prometheus.py
+│   │   └── _template_profiler.txt
 │   ├── __init__.py
 │   ├── plot.py
 │   ├── script.py
@@ -376,25 +370,24 @@ PyProfQueue
 ```
 </details>
 
-The directory *PyProfQueue/PyProfQueue* contains the *plot.py*. *script.py* and *submission.py* scripts which contain the 
-definition of the plotting functions, *Script* class and *submission()* function respectively.
+The directory *PyProfQueue/PyProfQueue* contains the *script.py* and *submission.py* scripts which house the 
+definition of the *Script* class and *submission()* function respectively.
 
-The directory *PyProfQueue/PyProfQueue/profilers* contains scripts of the individual profilers that PyProfQueue is 
-compatible with including a template version that can be used to add additional profiling software compatibility to 
-PyProfQueue. *PyProfQueue/PyProfQueue/profilers/data* contains a script called *read_prometheus.py* which is used to 
-scrape the prometheus database into a pandas dataframe. It also includes the text files that list the bash commands 
-needed to initialise run and end profiling software, as well as a template version for adding more profiling software 
-compatibility.
-
-
+The directory *PyProfQueue/PyProfQueue/batch_systems* contains the python files which house the dictionaries for each
+batch system that PyProfQueue is compatible with. *PyProfQueue/PyProfQueue/profilers* contains scripts of the individual 
+profilers that PyProfQueue is compatible with including a template version that can be used to add additional profiling 
+software compatibility to PyProfQueue. *PyProfQueue/PyProfQueue/profilers/data* contains a script called 
+*read_prometheus.py* which is used to scrape the prometheus database into a pandas dataframe. It also includes the text 
+files that list the bash commands needed to initialise run and end profiling software, as well as a template version for 
+adding more profiling software compatibility.
 
 The base directory contains the ReadMe.md file, and the setup.py file so that the package can be installed.
 ___
-## Adding new Queue systems
+## Adding new Batch systems
 ___
-A future goal for development on PyProfQueue is to add additional queue suport beyond slurm and torque. In order to add 
-new queue system compatibility refer to the block comments in the *Script* class in script.py. Each of the four section 
-that needs changes is marked with "Queue System specifics" followed by a {1}, {2}, {3} or {4}.
+In order to new batch system compatibility, a new .py file has to be created that follows the 
+*PyProfQueue/PyProfQueue/batch_systems/_template_batch.txt* format. If this is added correctly, then any options that 
+have overlap to pre-existing batch systems files will automatically be able to translate between each other.
 ___
 ## Adding new Profiling software
 ___
@@ -416,14 +409,13 @@ file.
 ___
 ___
 
-
 # To Do
 ___
 ___
+- Add Linaro Forge profiling support
 - Update the package format to follow more modern conventions for installing requirements
   - e.g. add pyproject.toml 
 - Add Vtune profiling support
-- Add Linaro Forge profiling support
 ___
 ___
 # UKSRC related Links

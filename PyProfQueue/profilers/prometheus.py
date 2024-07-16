@@ -149,7 +149,7 @@ def cwl_pass(cwl_output: str):
                     elif '[workflow ' in line:
                         search = '[workflow '
                     if 'completed success' in line:
-                        if line[line.index('[step') + 6:bracketEnd[1]] in workflow_steps:
+                        if 'workflow' in line or line[line.index('[step') + 6:bracketEnd[1]] in workflow_steps:
                             df_steps.loc[df_steps['Step'] == line[line.index(search) + 10:bracketEnd[1]], 'End'] = time
                             df_steps.loc[df_steps['Step'] == line[line.index(search) + 10:bracketEnd[1]], 'Status'] = 'b'
                         else:
@@ -201,10 +201,17 @@ def plot_shades(df_steps: pd.DataFrame, label: bool = True):
                             alpha=shade_alpha, color=c, linestyle='--', hatch=h)
 
 
-def plot_prom_profiling(df: pd.DataFrame, time_series: np.array, name_prefix: str,
-                        cwl_file: str = None, label: bool = True, network_three_mean: bool = True,
-                        mean_cpu: bool = True, all_cpu: bool = True, memory: bool = True,
-                        network: bool = True, gant: bool = True):
+def plot_prom_profiling(df: pd.DataFrame,
+                        time_series: np.array,
+                        name_prefix: str,
+                        mean_cpu: bool = True,
+                        all_cpu: bool = True,
+                        memory: bool = True,
+                        network: bool = True,
+                        network_three_mean: bool = True,
+                        gant: bool = True,
+                        cwl_file: str = None,
+                        label: bool = True):
     if cwl_file is not None:
         df_steps = cwl_pass(cwl_file)
     # Mean CPU
@@ -279,7 +286,7 @@ def plot_prom_profiling(df: pd.DataFrame, time_series: np.array, name_prefix: st
             plot_shades(df_steps, label)
         plt.fill_between(time_series, df['Memory Usage [GB]'], 0, label="RAM usage [GB]", linestyle='-', alpha=main_alpha)
         plt.legend(ncol=LegCols, prop={'size': 20}, framealpha=1, bbox_to_anchor=(0.5, -0.1), loc='upper center')
-        plt.ylim([0, df['Memory Total [GB]'].max()])
+        plt.ylim([0, df['Memory Usage [GB]'].max()])
         plt.xlim([time_series[0], time_series[-1]])
         plt.xlabel("Time", fontsize=20)
         plt.xticks(fontsize=20)

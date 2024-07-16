@@ -20,7 +20,6 @@ likwid-bench -t load_avx -W N:8GB:${THREAD_COUNT} | grep 'MByte/s:' >> ${LIK_OUT
 export BAND=$(grep -oP 'MByte/s:\s*\K\d+' ${LIK_OUTPUT} | sort -n | head -n 1)
 # *=*
 sleep 1
-grep -e 'MFLOP/s STAT' -e 'Operational intensity STAT' ${WORKING_DIR}/job_output_setup.txt >> ${LIK_OUTPUT}
 
 echo 'Plotting Likwid output as series'
 ${PYTHON_INSTANCE} -c "import PyProfQueue.profilers.likwid as lik;"\

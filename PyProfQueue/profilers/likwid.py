@@ -94,8 +94,12 @@ def define_end(profilefile: io.TextIOWrapper):
     return
 
 
-def plot_likwid_roof_single(name_prefix: str, maxperf: float, maxband: float,
-                     code_name: str = 'code', code_mflop: float = None, code_opint: float = None):
+def plot_likwid_roof_single(name_prefix: str,
+                            maxperf: float,
+                            maxband: float,
+                            code_name: str = 'code',
+                            code_mflop: float = None,
+                            code_opint: float = None):
     if code_mflop is not None:
         if code_opint * maxband < maxperf:
             Percentage = int((code_mflop / (code_opint * maxband)) * 100)
@@ -160,7 +164,11 @@ def read_timeseries(likwid_file: str):
     return time, op_int, flop_s
 
 
-def plot_roof_timeseries(likwid_file: str, name_prefix: str, maxperf: float, maxband: float, code_name: str = 'code'):
+def plot_roof_timeseries(likwid_file: str,
+                         name_prefix: str,
+                         maxperf: float,
+                         maxband: float,
+                         code_name: str = 'code'):
     time_series, code_opint, code_mflop = read_timeseries(likwid_file)
     points = np.array([code_opint, code_mflop]).T.reshape(-1, 1, 2)
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
@@ -198,5 +206,6 @@ def plot_roof_timeseries(likwid_file: str, name_prefix: str, maxperf: float, max
     axs.set_xlim(0, max_x)
     axs.set_ylim(0, maxperf * 1.05)
     axs.set_xlabel('Operational Intensity')
-    axs.set_ylabel('Performance [MFLOP/s]')
+    axs.set_ylabel('Performance log([MFLOP/s])')
+    axs.set_yscale('log')
     plt.savefig(name_prefix + '_TimeSeriesRoofline.png', bbox_inches='tight')

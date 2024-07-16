@@ -1,4 +1,3 @@
-# Built in Modules
 import importlib
 import sys
 
@@ -51,12 +50,26 @@ class Script:
     """
     def __init__(self, queue_system: str,
                  work_script: str,
-                 read_queue_system: str = None,
+                 read_queue_system: str = 'None',
                  queue_options: dict = None,
                  profiling: dict = None
                  ):
         if True:  # If statement added to allow for the collapse of the initiation of variables
             self.queue_system = queue_system
+            if self.queue_system is not None:
+                try:
+                    module = ".batch_systems." + self.queue_system
+                    self.queue_system_parameters = importlib.import_module(module, package="PyProfQueue").parameters
+                except:
+                    exit(f'No compatible queue system was specified, instead {self.queue_system} was provided as a queue system')
+                if bool(queue_options):
+                    self.obj_options = Options(queue_system_parameters=self.queue_system_parameters,
+                                               queue_options=queue_options)
+                else:
+                    self.obj_options = Options(queue_system_parameters=self.queue_system_parameters)
+            else:
+                self.queue_system_parameters = None
+                self.obj_options = Options(queue_system_parameters=None, queue_options=queue_options)
             self.work_script = work_script
             self.tmp_work_script = None
             self.tmp_profile_script = None
@@ -64,91 +77,24 @@ class Script:
             self.work_dir = None
             self.profiling = profiling
             self.at_execute = False  # boolean to see if a profiler is already used at the execution line.
+
             self.read_queue_system = read_queue_system
+            if self.read_queue_system is not None:
+                try:
+                    module = ".batch_systems." + self.read_queue_system
+                    self.read_queue_system_parameters = importlib.import_module(module, package="PyProfQueue").parameters
+                except:
+                    exit(f'No compatible read queue system was specified, instead {self.read_queue_system} was provided as a queue system')
+            else:
+                self.read_queue_system_parameters = None
 
-        if bool(queue_options):
-            self.obj_options = self.Options(queue_options)
-        else:
-            self.obj_options = self.Options()
+        if self.queue_system != 'None':
+            self.option_start = self.queue_system_parameters['Option_Flag']
+            self.submission = self.queue_system_parameters['submission_command']
 
-        # Queue System specifics {1}
-        '''
-        -----
-        To add a new queue system, this section needs two cases to be added.
-        - First, add one to 'match self.queue_system'
-            with the following:
-            case '<queue name>'
-                self.option_start = '<Format of how to declare queue options>'
-                self.submission = '<terminal command to submit scripts>'
-                job_name = '<Variable to give Job Name>'
-                job_id = '<Variable to give Job ID>'
-        
-        - Second, add a case to 'match self.read_queue_system' with the format of:
-            case '<queue name>'
-                self.read_option_start = '<Format of how to read queue options>'
-                options, self.works = self.read_script()
-                self.obj_options.<OBJ Option function name for this queue>_options(options)
-                self.outputvariable_convert(job_directory)
-        
-        Template 1:
-        =====
-        case '<queue_name>':
-            self.option_start = ''
-            job_name = '${}'
-            job_id = '${}'
-        =====
-        Template 2:
-        =====
-        case '<queue_name>':
-            self.read_option_start = ''
-            read_job_name = '${}'
-            read_job_id = '${}'
-            options, self.works = self.read_script()
-            self.obj_options.<queue_name>_options(options)
-            self.outputvariable_convert(job_name, job_id, read_job_name, read_job_id)
-        =====
-        -----
-        '''
-        # ==========================
-        match self.queue_system:
-            case 'slurm':
-                self.option_start = '#SBATCH '
-                self.submission = 'sbatch'
-            case 'torque':
-                self.option_start = '#PBS '
-                self.submission = 'qsub'
-            case None:
-                if queue_options is None:
-                    print("No queue system was selected, therefore only queue_options['workdir'] is needed.")
-
-            case _:
-                exit('No queue system chosen')
-
-        match self.read_queue_system:
-            case 'slurm':
-                self.read_option_start = '#SBATCH '
-                options, self.works = self.read_script()
-                self.obj_options.slurm_options(options)
-                self.outputvariable_convert()
-            case 'torque':
-                self.read_option_start = '#PBS '
-                options, self.works = self.read_script()
-                self.obj_options.torque_options(options)
-                self.outputvariable_convert()
-            case None:
-                if self.queue_system is None:
-                    if self.obj_options.workdir is None:
-                        self.obj_options.workdir = './'
-                elif queue_options is None:
-                    exit('"read_queue_system" was left as None, but no queue options were provided with "queue_options"')
-                else:
-                    self.outputvariable_convert()
-
-            case _:
-                exit('Provided queue system, {}, is not supported in the initialisation '
-                     '"match self.read_queue_system"'.format(self.read_queue_system))
-        # ==========================
-        self.obj_options.remove_empty_options()
+        if self.read_queue_system != 'None':
+            self.read_option_start = self.read_queue_system_parameters['Option_Flag']
+            self.works = self.read_script()
 
     def initialise_profiling(self, profiler, profilefile):
         """
@@ -249,438 +195,6 @@ class Script:
         current_prof = importlib.import_module(module, package="PyProfQueue")
         current_prof.define_end(profilefile=profilefile)
 
-    # Queue System specifics {2}
-    '''
-    -----
-    To add a new queue system, this section needs two things. First, a new case has to be created which handles a 
-    file using the new queue system being read in, which then needs a nested case to translate the output variable
-    to all other queue system formats to handle a file being written out. Second, the nested case of all older 
-    queue system need to have a new case added to them that handles how to translate reading the output variable from
-    the old queue system to the new queue system.
-    
-    To demonstrate the meaning we look at slurm to torque
-    Example:
-    #####
-    If we read in a slurm script but want to output a torque script, then the output variable defined through:
-        #SBATCH -o ./%x.%j.out
-    where %x is how slurm states ${SLURM_JOB_NAME} in the option section and %j is how slurm states ${SLURM_JOB_ID} in 
-    the option section, would need to become:
-        #PBS -o ./${PBS_JOBNAME}.${PBS_JOBID}.out
-    While the same is true in reverse, it only applies to the formating of the option declaration, in the script itself
-    slurm needs to use ${SLURM_JOB_NAME} or ${SLURM_JOB_ID} for %x and %j respectively.
-    #####
-    Template for new read_queue_system case:
-    =====
-    case '<queue_name>':
-        match self.queue_system:
-            case 'slurm':
-                self.obj_options.output = self.obj_options.output\
-                    .replace('<Job_Name_Variable>', '%x')\
-                    .replace('<Job_ID_Variable>', '%j')
-                if self.obj_options.workdir is not None:
-                    self.work_dir = self.obj_options.workdir\
-                        .replace('%x', '${SLURM_JOB_NAME}')\
-                        .replace('%j', '${SLURM_JOB_ID}')
-                else:
-                    self.work_dir = self.obj_options.output[:-4]\
-                        .replace('%x', '<Job_Name_Variable>')\
-                        .replace('%j', '<Job_ID_Variable>')
-            case 'torque':
-                self.obj_options.output = self.obj_options.output \
-                    .replace('<Job_Name_Variable>', '${PBS_JOBNAME}') \
-                    .replace('<Job_ID_Variable>', '${PBS_JOBID}')
-                if self.obj_options.workdir is not None:
-                    self.work_dir = self.obj_options.workdir
-                else:
-                    self.work_dir = self.obj_options.output[:-4]
-            case '<queue_name>':
-                # if the new queue system doesn't have special formats for designating Job_Name and Job_ID in options
-                # like slurm does, use this:
-                if self.obj_options.workdir is not None:
-                    self.work_dir = self.obj_options.workdir
-                else:
-                    self.work_dir = self.obj_options.output[:-4]
-                # if, like slurm, it has a special option only format for Job_Name and Job_ID use:
-                self.obj_options.output = self.obj_options.output\
-                    .replace('<Script_Job_Name_Variable>', '<Option_Job_Name_Variable>')\
-                    .replace('<Script_Job_ID_Variable>', '<Option_Job_ID_Variable>')
-                if self.obj_options.workdir is not None:
-                    self.work_dir = self.obj_options.workdir\
-                        .replace('<Script_Job_Name_Variable>', '<Option_Job_Name_Variable>')\
-                        .replace('<Script_Job_ID_Variable>', '<Option_Job_ID_Variable>')
-                else:
-                    self.work_dir = self.obj_options.output[:-4]\
-                        .replace('<Script_Job_Name_Variable>', '<Option_Job_Name_Variable>')\
-                        .replace('<Script_Job_ID_Variable>', '<Option_Job_ID_Variable>')
-            case None:
-                pass
-            case _:
-                exit('queue_system was unknown  when translating from <queue_name> to {}'.format(self.queue_system))
-    =====
-    Template for the nested case in old queue systems:
-    =====
-    # For Slurm
-    case '<queue_name>':
-        self.obj_options.output = self.obj_options.output.replace('%x.%j', <'<special format>' or job_directory>)
-        working_dir = self.obj_options.output[:-4].replace('<special format>', job_directory)
-    # For systems like Torque that don't have special formating in the option section
-    case '<queue_name>':
-        self.obj_options.output = self.obj_options.output.replace(job_directory, <'<special format>' or job_directory>)
-        working_dir = self.obj_options.output[:-4]
-    =====
-    -----
-    '''
-    # ==========================
-    def outputvariable_convert(self):
-        """
-        outputvariable_convert converts the variables in a script that are queue specific for output files.
-
-        Returns None
-        -------
-
-        """
-        match self.read_queue_system:
-            case 'slurm':
-                match self.queue_system:
-                    case 'slurm':
-                        if self.obj_options.workdir is not None:
-                            self.work_dir = self.obj_options.workdir\
-                                .replace('%x', '${SLURM_JOB_NAME}')\
-                                .replace('%j', '${SLURM_JOB_ID}')
-                        else:
-                            self.work_dir = self.obj_options.output[:-4]\
-                                .replace('%x', '${SLURM_JOB_NAME}')\
-                                .replace('%j', '${SLURM_JOB_ID}')
-                    case 'torque':
-                        self.obj_options.output = self.obj_options.output \
-                            .replace('%x', '${PBS_JOBNAME}') \
-                            .replace('%j', '${PBS_JOBID}')
-                        if self.obj_options.workdir is not None:
-                            self.work_dir = self.obj_options.workdir
-                        else:
-                            self.work_dir = self.obj_options.output[:-4]
-                    case None:
-                        pass
-                    case _:
-                        exit('queue_system was unknown when translating from slurm to {}'.format(self.queue_system))
-            case 'torque':
-                match self.queue_system:
-                    case 'slurm':
-                        self.obj_options.output = self.obj_options.output\
-                            .replace('${PBS_JOBNAME}', '%x')\
-                            .replace('${PBS_JOBID}', '%j')
-                        if self.obj_options.workdir is not None:
-                            self.work_dir = self.obj_options.workdir\
-                                .replace('%x', '${SLURM_JOB_NAME}')\
-                                .replace('%j', '${SLURM_JOB_ID}')
-                        else:
-                            self.work_dir = self.obj_options.output[:-4]\
-                                .replace('%x', '${SLURM_JOB_NAME}')\
-                                .replace('%j', '${SLURM_JOB_ID}')
-                    case 'torque':
-                        if self.obj_options.workdir is not None:
-                            self.work_dir = self.obj_options.workdir
-                        else:
-                            self.work_dir = self.obj_options.output[:-4]
-                    case None:
-                        pass
-                    case _:
-                        exit('queue_system was unknown when translating from torque to {}'.format(self.queue_system))
-            case None:
-                match self.queue_system:
-                    case 'slurm':
-                        if self.obj_options.workdir is not None:
-                            self.work_dir = self.obj_options.workdir\
-                                .replace('%x', '${SLURM_JOB_NAME}')\
-                                .replace('%j', '${SLURM_JOB_ID}')
-                        else:
-                            self.work_dir = self.obj_options.output[:-4] \
-                                .replace('%x', '${SLURM_JOB_NAME}') \
-                                .replace('%j', '${SLURM_JOB_ID}')
-                    case 'torque':
-                        if self.obj_options.workdir is not None:
-                            self.work_dir = self.obj_options.workdir
-                        else:
-                            self.work_dir = self.obj_options.output[:-4]
-                    case _:
-                        exit('queue_system was unknown when translating from no queue '
-                             'system to {}'.format(self.queue_system))
-            case _:
-                exit('read_queue_system was unknown with value: {}'.format(self.read_queue_system))
-        return
-    # ==========================
-
-    class Options:
-        """
-        Class to read existing bash scripts, pull out the options and create an object that contains all the
-        queue options, bash options, and desired profiling methods to be injected
-
-        Parameters to initiate
-        ----------
-        queue_options: dict
-            dictionary containing all the queue options to be used. These will overwrite queue options inside the
-            user defined bash script.
-        """
-        def __init__(self, queue_options: dict = None):
-            self.user = None
-            self.nodes = None
-            self.cores = None
-            self.tasks = None
-            self.time = None
-            self.partition = None
-            self.account = None
-            self.subname = None
-            self.output = None
-            self.workdir = None
-            if queue_options is not None:
-                self.pass_options(queue_options)
-
-        def pass_options(self, stated_options: dict):
-            """
-            pass_options takes a dictionary containing all the queue options to be used. These will overwrite queue
-            options in the user defined bash script.
-
-            Parameters
-            ----------
-            stated_options: dict
-                dictionary containing all the queue options to be used. These will overwrite queue options inside the
-                user defined bash script.
-
-            Returns None
-            -------
-
-            """
-            for key, value in stated_options.items():
-                match key:
-                    case 'user':
-                        self.user = value
-                    case 'nodes':
-                        self.nodes = value
-                    case 'cores':
-                        self.cores = value
-                    case 'tasks':
-                        self.tasks = value
-                    case 'time':
-                        self.time = value
-                    case 'partition':
-                        self.partition = value
-                    case 'account':
-                        self.account = value
-                    case 'name':
-                        self.subname = value
-                    case 'workdir':
-                        self.workdir = value
-                    case 'output':
-                        self.output = value
-                    case _:
-                        exit('Unknown option value in key: {}, with value: {} passed to pass_options'.format(key, value))
-            None
-
-        def remove_empty_options(self):
-            """
-            remove_empty_options removes all empty options from the Options object.
-
-            Returns None
-            -------
-            """
-            empty_attributes = [a for a in dir(self) if (not a.startswith('__') and
-                                                         not callable(getattr(self, a)) and
-                                                         getattr(self, a) is None)]
-            for attribute in empty_attributes:
-                delattr(self, attribute)
-            return
-
-        # Queue System specifics {3}
-        '''
-        -----
-        To add a new queue system, this section needs to have a new function declared.
-        This function needs to take self and a dictionary of options. This dictionary will use the queue options
-        from the bash script provided as keys, with the values being the declared options in the bash script.
-        The match function will then match each option to the correct variables. These variables are:
-        - user          The user ID of the system with which to submit the job.
-        - nodes         The number of nodes to be requested.
-        - cores         The number of cores each task will need.
-        - tasks         The number of tasks to perform.
-        - time          The walltime this job is allowed to run for in hh:mm:ss.
-        - partition     The specific queue/partition to submit to.
-        - account       The account to charge for the used resources.
-        - subname       Name of the submitted job.
-        - workdir       The directory in which the work should be done.
-        - output        The file, including path, to write the STDOUT to.
-        
-        Template
-        =====
-        def <queue_name>_options(self, <queue_name>_options):
-            for key, value in <queue_name>_options.items():
-                match key:
-                    case '':
-                        if self.user is not None:
-                            continue
-                        else:
-                            self.user = value
-                    case '':
-                        if self.nodes is not None:
-                            continue
-                        else:
-                            self.nodes = value
-                    case '':
-                        if self.cores is not None:
-                            continue
-                        else:
-                            self.cores = value
-                    case '':
-                        if self.tasks is not None:
-                            continue
-                        else:
-                            self.tasks = value
-                    case '':
-                        if self.time is not None:
-                            continue
-                        else:
-                            self.time = value
-                    case '':
-                        if self.partition is not None:
-                            continue
-                        else:
-                            self.partition = value
-                    case '':
-                        if self.account is not None:
-                            continue
-                        else:
-                            self.account = value
-                    case '':
-                        if self.subname is not None:
-                            continue
-                        else:
-                            self.subname = value
-                    case '':
-                        if self.workdir is not None:
-                            continue
-                        else:
-                            self.workdir = value
-                    case '':
-                        if self.output is not None:
-                            continue
-                        else:
-                            self.output = value
-                    case _:
-                        exit('Unknown option value in key: {}, with value: {} passed to <queue_name>_options'.format(key, value))
-        =====
-        '''
-        # ==========================
-        def slurm_options(self, slurm_options):
-            for key, value in slurm_options.items():
-                match key:
-                    case 'uid':
-                        if self.user is not None:
-                            continue
-                        else:
-                            self.user = value
-                    case 'N' | 'nodes':
-                        if self.nodes is not None:
-                            continue
-                        else:
-                            self.nodes = value
-                    case 'c' | 'cpus-per-task':
-                        if self.cores is not None:
-                            continue
-                        else:
-                            self.cores = value
-                    case 'n' | 'ntasks':
-                        if self.tasks is not None:
-                            continue
-                        else:
-                            self.tasks = value
-                    case 't' | 'time':
-                        if self.time is not None:
-                            continue
-                        else:
-                            self.time = value
-                    case 'p' | 'partition':
-                        if self.partition is not None:
-                            continue
-                        else:
-                            self.partition = value
-                    case 'A' | 'account':
-                        if self.account is not None:
-                            continue
-                        else:
-                            self.account = value
-                    case 'J' | 'job-name':
-                        if self.subname is not None:
-                            continue
-                        else:
-                            self.subname = value
-                    case 'D' | 'chdir':
-                        if self.workdir is not None:
-                            continue
-                        else:
-                            self.workdir = value
-                    case 'o' | 'output':
-                        if self.output is not None:
-                            continue
-                        else:
-                            self.output = value
-                    case _:
-                        exit('Unknown option value in key: {}, with value: {} passed to slurm_options'.format(key, value))
-
-        def torque_options(self, torque_options):
-            for key, value in torque_options.items():
-                match key:
-                    case 'P':
-                        if self.user is not None:
-                            continue
-                        else:
-                            self.user = value
-                    case 'l nodes':
-                        if self.nodes is not None:
-                            continue
-                        else:
-                            self.nodes = value
-                    case 'l ncpus':
-                        if self.cores is not None:
-                            continue
-                        else:
-                            self.cores = value
-                    case 'l ppn':
-                        if self.tasks is not None:
-                            continue
-                        else:
-                            self.tasks = value
-                    case 'l walltime':
-                        if self.time is not None:
-                            continue
-                        else:
-                            self.time = value
-                    case 'q':
-                        if self.partition is not None:
-                            continue
-                        else:
-                            self.partition = value
-                    case 'A':
-                        if self.account is not None:
-                            continue
-                        else:
-                            self.account = value
-                    case 'N':
-                        if self.subname is not None:
-                            continue
-                        else:
-                            self.subname = value
-                    case 'd':
-                        if self.workdir is not None:
-                            continue
-                        else:
-                            self.workdir = value
-                    case 'o':
-                        if self.output is not None:
-                            continue
-                        else:
-                            self.output = value
-                    case _:
-                        exit('Unknown option value in key: {}, with value: {} passed to torque_options'.format(key, value))
-        # ==========================
-
     def change_options(self, queue_options: dict):
         """
         change_options allows users to change the options they specified, after initialising their object.
@@ -693,114 +207,9 @@ class Script:
 
         Returns None
         -------
-
         """
-        self.obj_options.pass_options(queue_options)
+        self.obj_options.overwrite_options(queue_options)
         return
-
-    # Queue System specifics {4}
-    '''
-    -----
-    To add a new queue system one cases need to be added in this section.
-    This case needs to have the following format:
-        case <queue name>
-            match option:
-                case <option name>:
-                    return '<format to declare option in bash file>'
-                ...
-    the case that matches on option, needs to include the following options:
-    - user
-    - nodes
-    - cores
-    - tasks
-    - time
-    - partition
-    - account
-    - subname
-    - workdir
-    - output
-    The <format to declare option in bash file> needs to include '-', '--', and or any space or '=' as it would
-    appear in a bash script. 
-    We use slurm options as an example:
-        case 'user':
-            return '--uid='
-        case 'nodes':
-            return '-n '
-    
-    Template:
-    =====
-    case '':
-        match option:
-            case 'user':
-                return ''
-            case 'nodes':
-                return ''
-            case 'cores':
-                return ''
-            case 'tasks':
-                return ''
-            case 'time':
-                return ''
-            case 'partition':
-                return ''
-            case 'account':
-                return ''
-            case 'subname':
-                return ''
-            case 'workdir':
-                return ''
-            case 'output':
-                return ''
-    =====
-    '''
-    # ==========================
-    def option_converter(self, option):
-        match self.queue_system:
-            case 'slurm':
-                match option:
-                    case 'user':
-                        return '--uid='
-                    case 'nodes':
-                        return '-N '
-                    case 'cores':
-                        return '-c '
-                    case 'tasks':
-                        return '-n '
-                    case 'time':
-                        return '-t '
-                    case 'partition':
-                        return '-p '
-                    case 'account':
-                        return '-A '
-                    case 'subname':
-                        return '-J '
-                    case 'workdir':
-                        return '-D '
-                    case 'output':
-                        return '-o '
-            case 'torque':
-                match option:
-                    case 'user':
-                        return '-P '
-                    case 'nodes':
-                        return '--l nodes='
-                    case 'cores':
-                        return '--l ncpus='
-                    case 'tasks':
-                        return '--l ppn='
-                    case 'time':
-                        return '--l walltime='
-                    case 'partition':
-                        return '-q '
-                    case 'account':
-                        return '-A '
-                    case 'subname':
-                        return '-N '
-                    case 'workdir':
-                        return '-d '
-                    case 'output':
-                        return '-o '
-    # ==========================
 
     def read_script(self):
         """
@@ -818,9 +227,23 @@ class Script:
                     if line[line.find("-"):][1:2] == '-':
                         option_end = line.find("-") + line[line.find("-"):].find('=')
                         option_name = line[line.find("-") + 2:option_end]
+                    elif ('option_prefixes' in self.read_queue_system_parameters and
+                        line[line.find("-"):][1:2] in self.read_queue_system_parameters['option_prefixes']):
+                        prefix = line[line.find("-"):][1:2]
+                        prefix_loc = line.find("-" + prefix) + 3
+                        option_end = prefix_loc + line[prefix_loc:].find(' ')
+                        option_name = prefix + ' ' + line[prefix_loc:option_end]
                     else:
                         option_end = line.find("-") + 2
                         option_name = line[line.find("-") + 1:option_end]
+                    key_found = False
+                    for key, value_list in self.read_queue_system_parameters['options'].items():
+                        if option_name in value_list:
+                            option_name = key
+                            key_found = True
+                    if key_found is False:
+                        exit(f'{option_name} not found in {self.read_queue_system} as configured for PyProfQueue.')
+
                     option_end += 1
                     option_value_end = line[option_end:].find(' ')
                     if option_value_end == -1:
@@ -828,10 +251,23 @@ class Script:
                     else:
                         option_value_end += option_end
                         option_value = line[option_end:option_value_end]
+                    if self.read_queue_system != self.queue_system:
+                        if 'option_environment_variable' in self.read_queue_system_parameters:
+                            for key, value in self.read_queue_system_parameters['option_environment_variable'].items():
+                                if value in option_value:
+                                    option_value = option_value.replace(value, key)
+                        for key, value in self.read_queue_system_parameters['environment_variable'].items():
+                            if value in option_value:
+                                option_value = option_value.replace(value, self.queue_system_parameters['environment_variable'][key])
+                                if 'option_environment_variable' in self.queue_system_parameters:
+                                    if self.queue_system_parameters['environment_variable'][key] in self.queue_system_parameters['option_environment_variable'].keys():
+                                        option_value = option_value.replace(self.queue_system_parameters['environment_variable'][key],
+                                                                            self.queue_system_parameters['option_environment_variable'][self.queue_system_parameters['environment_variable'][key]])
                     options[option_name] = option_value
                 else:
                     work += [line]
-        return options, work
+        self.obj_options.append_options(options)
+        return work
 
     def create_workfile(self):
         """
@@ -858,18 +294,24 @@ class Script:
         -------
 
         """
-        to_write = [a for a in dir(self.obj_options) if not a.startswith('__') and
-                    not callable(getattr(self.obj_options, a))]
-        for option in to_write:
-            if option is not None and option != 'workdir':
-                profilefile.write(self.option_start + self.option_converter(option) +
-                                  self.obj_options.__getattribute__(option) + '\n')
+        for key, value in self.obj_options.option_dictionary.items():
+            if key is not None and key != 'workdir':
+                if (len(self.queue_system_parameters['options'][key][0]) > 1 and
+                        self.queue_system_parameters['options'][key][0][1] != ' '):
+                    pre_option_gap = ' --'
+                    post_option_gap = '='
+                else:
+                    pre_option_gap = ' -'
+                    post_option_gap = ' '
+                profilefile.write(self.queue_system_parameters['Option_Flag'] + pre_option_gap +
+                                  self.queue_system_parameters['options'][key][0] + post_option_gap +
+                                  value + '\n')
         profilefile.write('\n')
         return
 
     def create_profilefile(self, tmp_work_script='./tmp_workfile.sh',
                            tmp_profile_script='./tmp_profilefile.sh',
-                           bash_options=['']):
+                           bash_options=None):
         """
         create_profilefile uses the attributes of the Script object, and creates the temporary profile file that will
         be submitted to the queue on behalf of the user.
@@ -888,6 +330,8 @@ class Script:
         Returns None
         -------
         """
+        if bash_options is None:
+            bash_options = ['']
         self.tmp_profile_script = tmp_profile_script
         self.tmp_work_script = tmp_work_script
         with open(self.tmp_profile_script, 'w') as profilefile:
@@ -937,3 +381,103 @@ class Script:
             self.tmp_work_script = self.work_script
 
         return
+
+
+class Options:
+    """
+    Class to read existing bash scripts, pull out the options and create an object that contains all the
+    queue options, bash options, and desired profiling methods to be injected
+
+    Parameters to initiate
+    ----------
+    queue_options: dict
+        dictionary containing all the queue options to be used. These will overwrite queue options inside the
+        user defined bash script.
+    """
+
+    def __init__(self, queue_system_parameters: dict | None, queue_options: dict = None):
+        self.option_dictionary = {}
+        if queue_system_parameters is None:
+            if queue_options is not None:
+                if 'work_dir' not in queue_options.keys():
+                    exit('work_dir parameter is required for queue_options if no batch system is being used.')
+                else:
+                    self.overwrite_options(queue_options)
+            else:
+                exit('work_dir parameter is required for queue_options if no batch system is being used.')
+        elif queue_options is None:
+            self.queue_system_parameters = queue_system_parameters
+        else:
+            self.queue_system_parameters = queue_system_parameters
+            self.overwrite_options(queue_options)
+
+    def check_options(self, queue_system_parameters: dict):
+        """
+        check_options takes a dictionary containing all the queue options to be used and verifies that the batch system
+        chosen has been configured in PyProfQueue to be compatible with this option.
+
+        Parameters
+        ----------
+        queue_system_parameters: dict
+            dictionary containing all the parameters that the queue is has.
+
+        Returns None
+        -------
+
+        """
+        for key in self.option_dictionary.keys():
+            if key not in queue_system_parameters['options']:
+                exit(f"Queue option {key} is not compatible with the queue {queue_system_parameters['queue_name']}"
+                     f" as configured with PyProfQueue.")
+
+    def overwrite_options(self, queue_options: dict):
+        """
+        overwrite_options takes a dictionary containing all the queue options to be used, verifies that the batch system
+        chosen has been configured in PyProfQueue to be compatible with this option and then overwrites the existing
+        value of the option or adds it to the queue options dictionary.
+
+        Parameters
+        ----------
+        queue_options: dict
+            dictionary containing all options that are to be changed and overwritten.
+
+        Returns None
+        -------
+
+        """
+        for key, value in queue_options.items():
+            if key in self.queue_system_parameters['options'].keys():
+                if any(val in value for val in self.queue_system_parameters['environment_variable'].keys()):
+                    new_value = value
+                    for env_key, env_value in self.queue_system_parameters['environment_variable'].items():
+                        new_value = new_value.replace(env_key, env_value)
+                    if "option_environment_variable" in self.queue_system_parameters:
+                        if any(short_val in new_value for short_val in self.queue_system_parameters['option_environment_variable'].keys()):
+                            for short_key, short_value in self.queue_system_parameters['option_environment_variable'].items():
+                                new_value = new_value.replace(short_key, short_value)
+                    self.option_dictionary[key] = new_value
+                else:
+                    self.option_dictionary[key] = value
+            else:
+                print(f"during overwrite_options: {key} is not a valid queue option, continuing with remaining options.")
+
+    def append_options(self, queue_options: dict):
+        """
+        append_options takes a dictionary containing all the queue options to be used, verifies that the batch system
+        chosen has been configured in PyProfQueue to be compatible with this option and then appends it to the queue
+        options dictionary if it is not already present. It does not overwrite the existing options.
+
+        Parameters
+        ----------
+        queue_options: dict
+            dictionary containing all options that are to be changed and overwritten.
+
+        Returns None
+        -------
+
+        """
+        for key, value in queue_options.items():
+            if key in self.queue_system_parameters['options'].keys() and key not in self.option_dictionary:
+                self.option_dictionary[key] = value
+            elif key not in self.queue_system_parameters['options'].keys():
+                print(f"during append_options: {key} is not a valid queue option, continuing with remaining options.")

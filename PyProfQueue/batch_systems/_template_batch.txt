@@ -1,0 +1,37 @@
+parameters = {
+    'queue_name': '',                   # Name of the queue system
+    'Option_Flag': '',                  # Option prefix
+    'submission_command': '',           # Command used to batch submit
+    'environment_variable':             # List of environmental variables for the batch job
+        {
+            'job_array_index': '${}',
+            'job_id': '${}',
+            'job_name': '${}',
+            'node_list': '${}',
+            'submit_directory': '${}',
+            'submit_host': '${}'
+        },
+    'option_prefixes': [''],            # Optional prefix for options such as "-l mem" for pbs
+    'option_environment_variable': {},  # Optional shortcuts for environmental variables in the options i.e.
+                                        # %x for slurm job names
+    'options':                          # list of batch system options with lists of the flags that correspond to them
+        {
+            'user': [''],
+            'account': [''],
+            'partition': [''],
+            'job_name': [''],
+            'job_dependency': [''],
+            'work_dir': [''],
+            'output_file': [''],
+            'error_file': [''],
+            'event_notification': [''],
+            'event_email': [''],
+            'nodes': [''],
+            'cores': [''],
+            'memory': [''],
+            'tpn': [''],             # Tasks per Node
+            'n_tasks': [''],
+            'time': [''],
+            'cpu_time': ['']
+        }
+}

@@ -9,7 +9,7 @@ from .script import Script
 def submit(script: Script,
            tmp_work_script: str = './tmp_workfile.sh',
            tmp_profile_script: str = './tmp_profilefile.sh',
-           bash_options: list = [''],
+           bash_options: list = None,
            leave_scripts: bool = True,
            test: bool = False):
     '''
@@ -34,6 +34,8 @@ def submit(script: Script,
         If True, leaves scripts that are created, but does not submit them. Instead, it prints out the command it would
         have used if it had submitted them.
     '''
+    if bash_options is None:
+        bash_options = ['']
     script.create_profilefile(tmp_work_script, tmp_profile_script, bash_options)
     if test:
         print('The following command would be used to submit a job to the queue:')

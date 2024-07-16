@@ -7,7 +7,7 @@ long_description = (this_directory / "ReadMe.md").read_text()
 
 setup(
     name='PyProfQueue',
-    version='0.2.2a6',
+    version='0.2.3',
     url='https://github.com/uksrc-developers/PyProfQueue',
     author='Marcus Keil',
     author_email='marcusk050291@gmail.com',
@@ -15,6 +15,7 @@ setup(
     packages=['PyProfQueue'],
     package_dir={'PyProfQueue': 'PyProfQueue'},
     package_data={'PyProfQueue': ['../ReadMe.md',
+                                  'batch_systems/*.py',
                                   'profilers/*.py',
                                   'profilers/data/*.txt',
                                   'profilers/data/read_prometheus.py']},
