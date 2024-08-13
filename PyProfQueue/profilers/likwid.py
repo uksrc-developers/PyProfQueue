@@ -13,7 +13,6 @@ likwid_file_path = impresources.files(data) / 'likwid_commands.txt'
 likwid_initEndSplit = -1
 
 
-
 def define_initialise(profilefile: io.TextIOWrapper, profilerdict: dict = None):
     '''
     define_initialise creates any needed variables, and writes the required arguments into the profile_file in order
@@ -168,7 +167,8 @@ def plot_roof_timeseries(likwid_file: str,
                          name_prefix: str,
                          maxperf: float,
                          maxband: float,
-                         code_name: str = 'code'):
+                         code_name: str = 'code',
+                         log_plot: bool = False):
     time_series, code_opint, code_mflop = read_timeseries(likwid_file)
     points = np.array([code_opint, code_mflop]).T.reshape(-1, 1, 2)
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
@@ -204,8 +204,11 @@ def plot_roof_timeseries(likwid_file: str,
     fig.colorbar(line, ax=axs, label='Time [s]')
 
     axs.set_xlim(0, max_x)
-    axs.set_ylim(0, maxperf * 1.05)
+    if log_plot:
+        axs.set_yscale('log')
+        axs.set_ylim(code_mflop.min(), maxperf * 10)
+    else:
+        axs.set_ylim(0, maxperf*1.1)
     axs.set_xlabel('Operational Intensity')
     axs.set_ylabel('Performance log([MFLOP/s])')
-    axs.set_yscale('log')
     plt.savefig(name_prefix + '_TimeSeriesRoofline.png', bbox_inches='tight')
