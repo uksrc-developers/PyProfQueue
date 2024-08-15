@@ -31,9 +31,10 @@ def define_initialise(profilefile: io.TextIOWrapper, profilerdict: dict = None):
     global likwid_file_path
     global likwid_initEndSplit
     profilefile.write('# Likwid initialisation declarations\n')
-    for i in profilerdict['requirements']:
-        profilefile.write(i)
-        profilefile.write('\n')
+    if 'requirements' in profilerdict.keys():
+        for i in profilerdict['requirements']:
+            profilefile.write(i)
+            profilefile.write('\n')
     profilefile.write('\n')
     profilefile.write('export LIKWID_RUNNING_DIR=${WORKING_DIR}/Likwid\n')
     with open(likwid_file_path, 'r') as read_file:

@@ -1,5 +1,6 @@
 import importlib
 import sys
+import os
 
 
 class Script:
@@ -149,7 +150,7 @@ class Script:
                                                      bash_options=bash_options,
                                                      tmp_work_script=self.tmp_work_script,
                                                      works=self.works,
-                                                     profilerdict=self.profiling[profiler])
+                                                     profilerdict=self.profiling[profiler] | {'work_dir': self.work_dir})
                 self.at_execute = True
             else:
                 exit(f"Multiple at execution profilers were defined. Failed when adding profiler {profiler}")
@@ -295,7 +296,7 @@ class Script:
 
         """
         for key, value in self.obj_options.option_dictionary.items():
-            if key is not None and key != 'workdir':
+            if key is not None and key != 'work_dir':
                 if (len(self.queue_system_parameters['options'][key][0]) > 1 and
                         self.queue_system_parameters['options'][key][0][1] != ' '):
                     pre_option_gap = ' --'
@@ -306,6 +307,18 @@ class Script:
                 profilefile.write(self.queue_system_parameters['Option_Flag'] + pre_option_gap +
                                   self.queue_system_parameters['options'][key][0] + post_option_gap +
                                   value + '\n')
+            if key is not None and key == 'work_dir':
+                work_dir = value
+                if 'option_environment_variable' in self.read_queue_system_parameters:
+                    for key_queue, value_queue in self.read_queue_system_parameters['option_environment_variable'].items():
+                        if value_queue in value:
+                            work_dir = work_dir.replace(value_queue, key_queue)
+                self.work_dir = work_dir
+
+        if self.work_dir is None:
+            self.work_dir = os.getcwd()
+            self.obj_options.option_dictionary['work_dir'] = self.work_dir
+
         profilefile.write('\n')
         return
 

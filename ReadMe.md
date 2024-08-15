@@ -2,8 +2,9 @@
 
 ___
 ___
-PyProfQueue serves as a python package that can take in existing bash scripts, add prometheus monitoring calls and 
-likwid performance measure calls, and submit the script to an HPC queue system on the users' behalf.
+PyProfQueue serves as a python package that can take in existing bash scripts, add prometheus monitoring calls, 
+likwid performance measure calls, linaro forge map calls, and submit the script to an HPC queue system on the users' 
+behalf.
 ___
 ___
 # Description
@@ -13,8 +14,8 @@ ___
 PyProfQueue takes existing bash scripts, scrapes any queue options from them and creates two temporary files. The first 
 file, is equivalent to the user provided bash script but with queue options removed from it. The second bash script is
 the file that will be submitted to the queue on the users' behalf. This second temporary script contains the queue 
-options provided by the user as well as any additionally required commands to initialise prometheus monitoring and/or
-likwid performance measuring of the users bash script.
+options provided by the user as well as any additionally required commands to initialise prometheus monitoring, linaro
+forge map profiling and/or likwid performance measuring of the users bash script.
 ## Component details
 ___
 The user facing components of PyProfQueue are the *Script* class and *submit* function.
@@ -102,35 +103,58 @@ have to be provided. If queue options are available in the script then *read_que
 of the queue system that the original script was intended for. In order to use profiling tools, a dictionary has to 
 be provided to the *profiling* option of the *Script* class. The keys of the dictionaries are the name of the profiling
 tools to be used, and the values of the dictionary is a dictionary of required and optional arguments for each profiler.
-As long as there is not clashes between profiling tools, multiple can be used at once. We list examples of inputs below.
+As long as there is no clashes between profiling tools, multiple can be used at once. We list examples of inputs below.
 
 <details>
 <summary>Likwid Inputs</summary>
 
 #### Likwid specific inputs
 In order to use likwid, the key 'likwid' needs to be used in the *profiling* option for the *Script* object. This key 
-then needs to have a value of "requirements" which contains a list of all commands that need to be executed prior to 
-being able to use likwid on the HPC system the script is being submitted to. If, for example, a simple module loading
-command is required, it could look like this
+then needs to have a dictionary which can contain the key "requirements" which would list of all commands that need to
+be executed prior to being able to use likwid on the HPC system the script is being submitted to. If, for example, a 
+simple module loading command is required, it could look like this
 ```python
 profiling = {"likwid": {"requirements":["module load likwid"]}}
 ```
 </details>
+
 <details>
 <summary>Prometheus Inputs</summary>
 
 #### Prometheus specific inputs
 In order to use prometheus, the key 'prometheus' needs to be used in the *profiling* option for the *Script* object. 
-This key then needs to have a value of "requirements" which has to contain the path to the prometheus instance to use, 
-or it has to contain "ip_address" which then has an IP address, stored as a string, of a pre-existing prometheus
-instance that can be scraped. Here is an example of both, where "<path/to/prometheus>" is used to represent the path
-to the prometheus instance the user would want to use.
+This key then needs to have a dictionary containing the key "requirements" which has to contain the path to the 
+prometheus instance to use, or it has to contain "ip_address" which then has an IP address, stored as a string, 
+of a pre-existing prometheus instance that can be scraped. Here is an example of both, where "<path/to/prometheus>" 
+is used to represent the path to the prometheus instance the user would want to use.
 ```python
 profiling = {"prometheus": {"requirements":["export PROMETHEUS_SOFTWARE=<path/to/prometheus>"]}}
 # OR
 profiling = {"prometheus": {"ip_address":["127.0.0.1:9090"]}}
 ```
 </details>
+
+<details>
+<summary>Linaro Forge Inputs</summary>
+
+#### Linaro Forge Map specific inputs
+In order to use Linaro Forge map profiling, the key 'linaro_forge' needs to be used in the *profiling* option for the 
+*Script* object. This key then requires have a value of "code_line" listing the strings to look for in the user 
+provided bash script which should be profiled using Linaro Forge map. It is important to note, that any entry into the
+"code_line" list will be used to search lines of the user provided bash script, providing a "code_line" such as 'echo',
+would add Linaro Forge map profiling to every line containing the string 'echo', not just a line that only has 'echo' 
+on it. Additionally, a "requirements" key can be provided which should list any commands that need to be executed prior 
+to being able to use Linaro Forge on an HPC system, and it can also contain an "options" key to allow options to be 
+passed to the Linaro Forge map calls. Here is an example of how the profiling option could look like if a user wanted 
+to only use Linaro Forge map profiling
+```python
+profiling = {"linaro_forge": {'code_line': ['echo "Hello World"']}}
+```
+Because of the overhead of Linaro Forge map, we do not recommend using Likwid and Linaro Forge map together. The results
+from Likwid would be less representative of the user provided bash script as the overhead of Linaro Forge map would
+be included into the data, but non-separable. 
+</details>
+
 
 ### Outputs
 The output of the *Script* class, is an object that contains all the given options, file paths and other variables 
@@ -205,6 +229,15 @@ and average operational intensity over the entire duration of the job. The perfo
 |        maxperf        | Float of the maximum performance listed in likwid output file      |
 |        maxband        | Float of the maximum memory bandwidth listed in likwid output file |
 | code_name (Optional)  | String of what to call the code in the legend of the plot          |
+</details>
+
+<details>
+<summary>Linaro Forge Output</summary>
+
+Linaro Forge map, provides a .map file for each call of Linaro Forge map that was added to the user provided bash 
+script. This file can be opened using Linaro Forge in order to see the results of the profiling performed on those
+calls.
+
 </details>
 
 ___
@@ -356,9 +389,11 @@ PyProfQueue
 │   │   ├── data
 │   │   │   ├── read_prometheus.py
 │   │   │   ├── likwid_commands.txt
+│   │   │   ├── linaro_forge_commands.txt
 │   │   │   ├── prometheus_commands.txt
 │   │   │   └── _template_commands.txt
 │   │   ├── likwid.py
+│   │   ├── linaro_forge.py
 │   │   ├── prometheus.py
 │   │   └── _template_profiler.txt
 │   ├── __init__.py
@@ -404,7 +439,7 @@ running the profiler.
 
 If the profiler being added needs to be used in order to execute the user provided bash script, then the function 
 *define_run(profilefile: io.TextIOWrapper, bash_options: list, tmp_work_script: str)* should be defined in the 
-script for the specific profiler. This function should write the needed command to use the profilerto the profiling 
+script for the specific profiler. This function should write the needed command to use the profiler to the profiling 
 file.
 ___
 ___
@@ -412,7 +447,6 @@ ___
 # To Do
 ___
 ___
-- Add Linaro Forge profiling support
 - Update the package format to follow more modern conventions for installing requirements
   - e.g. add pyproject.toml 
 - Add Vtune profiling support
