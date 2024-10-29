@@ -338,15 +338,19 @@ functionality.
 <details>
 <summary>Non Python Requirements</summary>
 
-In addition to the python requirements listed above, PyProfQueue also needs to have the following software on the system 
-to which the job will be submitted:
+In addition to the python requirements listed above, PyProfQueue also needs to have the following software available
+on the system to which the job will be submitted:
 - [node_exporter](https://prometheus.io/docs/guides/node-exporter/)
 - [prometheus](https://prometheus.io/)
 - [likwid](https://github.com/RRZE-HPC/likwid)
+- [Linaro Forge](https://www.linaroforge.com/)
 
+<details>
+<summary>Prometheus Requirements</summary>
 For prometheus and node_exporter, it is enough to download the software as long as they can both be launched by the 
 user without sudo rights. However, they need to be put into the same directory so that the following directory structure
 is in place:
+
 ```md
 ${PROMETHEUS_SOFTWARE}
 ├── node_exporter
@@ -357,12 +361,29 @@ ${PROMETHEUS_SOFTWARE}
 ```
 Where *node_exporter/node_exporter* is the executable for node_exporter, *prometheus/prometheus* is the executable for 
 prometheus, and *prometheus/prometheus.yml* is the configuration file to be used for prometheus.
+</details>
 
+<details>
+<summary>Likwid Requirements</summary>
 For the sake of likwid, it needs to be installed or loaded, in such a way that a user could run the following 
 command without sudo rights:
+
 ```
 likwid-perfctr -g MEM_DP -t 300s <output directory> <executable> <options for executable>
 ```
+</details>
+
+<details>
+<summary>Linaro Forge Requirements</summary>
+For the sake of Linaro Forge, users should load linaro forge, through modules or whatever format an HPC system has,
+such that they can call a function similar to 
+
+```
+map --profile --no-queue -o <output file path> <user command>
+```
+as this is what PyProfQueue will use in order to profile parts of the user provided work script.
+
+</details>
 
 </details>
 
@@ -406,12 +427,14 @@ PyProfQueue
 </details>
 
 The directory *PyProfQueue/PyProfQueue* contains the *script.py* and *submission.py* scripts which house the 
-definition of the *Script* class and *submission()* function respectively.
+definition of the *Script* class and *submission()* function respectively. 
 
 The directory *PyProfQueue/PyProfQueue/batch_systems* contains the python files which house the dictionaries for each
 batch system that PyProfQueue is compatible with. *PyProfQueue/PyProfQueue/profilers* contains scripts of the individual 
 profilers that PyProfQueue is compatible with including a template version that can be used to add additional profiling 
-software compatibility to PyProfQueue. *PyProfQueue/PyProfQueue/profilers/data* contains a script called 
+software compatibility to PyProfQueue. 
+
+*PyProfQueue/PyProfQueue/profilers/data* contains a script called 
 *read_prometheus.py* which is used to scrape the prometheus database into a pandas dataframe. It also includes the text 
 files that list the bash commands needed to initialise run and end profiling software, as well as a template version for 
 adding more profiling software compatibility.

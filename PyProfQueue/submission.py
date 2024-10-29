@@ -10,7 +10,8 @@ def submit(script: Script,
            tmp_work_script: str = './tmp_workfile.sh',
            tmp_profile_script: str = './tmp_profilefile.sh',
            bash_options: list = None,
-           leave_scripts: bool = True,
+           leave_scripts: bool = False,
+           submit: bool = True,
            test: bool = False):
     '''
     Create the temporary profile file and temporary work script in order to submit them to the appropriate queuing
@@ -36,7 +37,7 @@ def submit(script: Script,
     '''
     if bash_options is None:
         bash_options = ['']
-    script.create_profilefile(tmp_work_script, tmp_profile_script, bash_options)
+    script.create_profilefile(bash_options)
     if test:
         print('The following command would be used to submit a job to the queue:')
         print(' '.join([getattr(script, 'submission'), getattr(script, 'tmp_profile_script')]))
@@ -45,8 +46,10 @@ def submit(script: Script,
         time.sleep(1)
 
     if leave_scripts or test:
+        time.sleep(1)
+        subprocess.run(' '.join(["mv", getattr(script, 'tmp_profile_script'), tmp_profile_script]), shell=True)
+        if getattr(script, 'tmp_work_script') is not None:
+            subprocess.run(' '.join(["mv", getattr(script, 'tmp_work_script'), tmp_work_script]), shell=True)
         return
     else:
-        subprocess.run(f'rm {tmp_profile_script}', shell=True)
-        subprocess.run(f'rm {tmp_work_script}', shell=True)
         return

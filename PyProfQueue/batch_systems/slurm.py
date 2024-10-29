@@ -14,22 +14,25 @@ parameters = {
     'option_environment_variable': {'${SLURM_JOB_NAME}': '%x', '${SLURM_JOB_ID}': '%j'},
     'options':
         {
-            'user': ['uid'],
             'account': ['A', 'account'],
-            'partition': ['p', 'partition'],
-            'job_name': ['J', 'job-name'],
-            'job_dependency': ['depend'],
             'work_dir': ['D', 'chdir'],
-            'output_file': ['o', 'out'],
+            'cores': ['c', 'cpus-per-task'],        # CPU per Task
             'error_file': ['e'],
+            'job_dependency': ['d', 'dependency'],
+            'GPUs': ['G', 'gpus'],
+            'Generic_resource_list': ['gres'],
+            'GPUS_perN': ['gpus-per-node'],
+            'job_name': ['J', 'job-name'],
             'event_notification': ['mail-type'],
             'event_email': ['mail-user'],
-            'nodes': ['N', 'nodes'],
-            'cores': ['c', 'cpus-per-task'],          # CPU per Task
             'memory': ['mem'],
-            'tpn': ['ntasks-per-node'],             # Tasks per Node
             'mpc': ['mem-per-cpu'],                 # Memory per CPU
+            'nodes': ['N', 'nodes'],
             'n_tasks': ['n', 'ntasks'],
-            'time': ['t', 'time']
+            'tpn': ['ntasks-per-node'],             # Tasks per Node
+            'output_file': ['o', 'out'],
+            'partition': ['p', 'partition'],
+            'time': ['t', 'time'],
+            'user': ['uid']
         }
 }
