@@ -12,14 +12,14 @@ class Script:
     Parameters to initiate
     ----------
     queue_system : str
-        str of the queue system to be used. [sbatch, torque]
+        str of the queue system to be used. [slurm, torque]
     work_script : str
         str of the path and name of the original bash script to be profiled
     work_command : str
         str terminal command to execute and profile
     read_queue_system : str = None
         str of the queue system that the work_script was written for, if not specified it is assumed
-        it is the same as queue_system. [sbatch, torque]
+        it is the same as queue_system. [slurm, torque]
     queue_options : dict = None
         dictionary of options to be passed to the queue system.
     profiling : dict = None

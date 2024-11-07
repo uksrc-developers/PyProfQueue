@@ -293,6 +293,38 @@ def plot_prom_profiling(df: pd.DataFrame,
         plt.ylabel("RAM usage [GB]", fontsize=20)
         plt.yticks(fontsize=20)
         plt.savefig(name_prefix + '_Memory_Usage.png', bbox_inches='tight', dpi=DPI)
+    # IO Plots
+    if io:
+        IO_figure = plt.figure(figsize=(avg_xSize, avg_ySize))
+        IO_figure.suptitle("IO usage [Write positive, Read negative KB]", fontsize=20)
+        plt.gca().xaxis.set_major_formatter(mdt.DateFormatter('%y-%m-%d %T'))
+        if cwl_file is not None:
+            plot_shades(df_steps, label)
+        maxY = 0
+        minY = 0
+        for column in df.filter(like='Write:').columns:
+            plt.fill_between(time_series, df[column], 0, label=column, linestyle='-', alpha=main_alpha)
+            if network_three_mean:
+                maxY = df[column].mean() * 3
+            else:
+                if maxY < df[column].max():
+                    maxY = df[column].max()
+        for column in df.filter(like='Read:').columns:
+            plt.fill_between(time_series, -df[column], 0, label=column, linestyle='-', alpha=main_alpha)
+            if network_three_mean:
+                minY = df[column].mean() * 3
+            else:
+                if minY < df[column].max():
+                    minY = df[column].max()
+        plt.vlines(0, time_series.min(), time_series.max())
+        plt.ylim([-minY * 1.25, maxY * 1.25])
+        plt.legend(ncol=LegCols, prop={'size': 20}, framealpha=1, bbox_to_anchor=(0.5, -0.1), loc='upper center')
+        plt.xlim([time_series[0], time_series[-1]])
+        plt.xlabel("Time", fontsize=20)
+        plt.xticks(fontsize=20)
+        plt.ylabel("IO usage KB", fontsize=20)
+        plt.yticks(fontsize=20)
+        plt.savefig(name_prefix + '_IO_Usage.png', bbox_inches='tight', dpi=DPI)
     # Network Plots
     if network:
         network_figure = plt.figure(figsize=(avg_xSize, avg_ySize))
