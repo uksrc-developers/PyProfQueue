@@ -207,6 +207,7 @@ def plot_prom_profiling(df: pd.DataFrame,
                         mean_cpu: bool = True,
                         all_cpu: bool = True,
                         memory: bool = True,
+                        io_plot: bool = True,
                         network: bool = True,
                         network_three_mean: bool = True,
                         gant: bool = True,
@@ -294,7 +295,7 @@ def plot_prom_profiling(df: pd.DataFrame,
         plt.yticks(fontsize=20)
         plt.savefig(name_prefix + '_Memory_Usage.png', bbox_inches='tight', dpi=DPI)
     # IO Plots
-    if io:
+    if io_plot:
         IO_figure = plt.figure(figsize=(avg_xSize, avg_ySize))
         IO_figure.suptitle("IO usage [Write positive, Read negative KB]", fontsize=20)
         plt.gca().xaxis.set_major_formatter(mdt.DateFormatter('%y-%m-%d %T'))
