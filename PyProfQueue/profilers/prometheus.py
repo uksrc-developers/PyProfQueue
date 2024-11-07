@@ -220,6 +220,7 @@ def plot_prom_profiling(df: pd.DataFrame,
         MeanCPU_figure = plt.figure(figsize=(avg_xSize, avg_ySize))
         MeanCPU_figure.suptitle("Mean CPU usage (Percentage)", fontsize=20)
         plt.gca().xaxis.set_major_formatter(mdt.DateFormatter('%y-%m-%d %T'))
+        plt.gca().yaxis.set_major_formatter('{x:.04f}')
         if cwl_file is not None:
             plot_shades(df_steps, label)
         plt.hlines(y=100, linestyle='--', xmin=time_series[0],
@@ -283,6 +284,7 @@ def plot_prom_profiling(df: pd.DataFrame,
         memory_figure = plt.figure(figsize=(avg_xSize, avg_ySize))
         memory_figure.suptitle("RAM usage [GB]", fontsize=20)
         plt.gca().xaxis.set_major_formatter(mdt.DateFormatter('%y-%m-%d %T'))
+        plt.gca().yaxis.set_major_formatter('{x:.04f}')
         if cwl_file is not None:
             plot_shades(df_steps, label)
         plt.fill_between(time_series, df['Memory Usage [GB]'], 0, label="RAM usage [GB]", linestyle='-', alpha=main_alpha)
@@ -297,40 +299,36 @@ def plot_prom_profiling(df: pd.DataFrame,
     # IO Plots
     if io_plot:
         IO_figure = plt.figure(figsize=(avg_xSize, avg_ySize))
-        IO_figure.suptitle("IO usage [Write positive, Read negative KB]", fontsize=20)
+        IO_figure.suptitle("IO usage [Write positive, Read negative kB]", fontsize=20)
         plt.gca().xaxis.set_major_formatter(mdt.DateFormatter('%y-%m-%d %T'))
+        plt.gca().yaxis.set_major_formatter('{x:.04f}')
         if cwl_file is not None:
             plot_shades(df_steps, label)
         maxY = 0
         minY = 0
         for column in df.filter(like='Write:').columns:
             plt.fill_between(time_series, df[column], 0, label=column, linestyle='-', alpha=main_alpha)
-            if network_three_mean:
-                maxY = df[column].mean() * 3
-            else:
-                if maxY < df[column].max():
-                    maxY = df[column].max()
+            if maxY < df[column].max():
+                maxY = df[column].max()
         for column in df.filter(like='Read:').columns:
             plt.fill_between(time_series, -df[column], 0, label=column, linestyle='-', alpha=main_alpha)
-            if network_three_mean:
-                minY = df[column].mean() * 3
-            else:
-                if minY < df[column].max():
-                    minY = df[column].max()
+            if minY < df[column].max():
+                minY = df[column].max()
         plt.vlines(0, time_series.min(), time_series.max())
         plt.ylim([-minY * 1.25, maxY * 1.25])
         plt.legend(ncol=LegCols, prop={'size': 20}, framealpha=1, bbox_to_anchor=(0.5, -0.1), loc='upper center')
         plt.xlim([time_series[0], time_series[-1]])
         plt.xlabel("Time", fontsize=20)
         plt.xticks(fontsize=20)
-        plt.ylabel("IO usage KB", fontsize=20)
+        plt.ylabel("IO usage kB", fontsize=20)
         plt.yticks(fontsize=20)
         plt.savefig(name_prefix + '_IO_Usage.png', bbox_inches='tight', dpi=DPI)
     # Network Plots
     if network:
         network_figure = plt.figure(figsize=(avg_xSize, avg_ySize))
-        network_figure.suptitle("Network usage [Received positive, Sent negative KB]", fontsize=20)
+        network_figure.suptitle("Network usage [Received positive, Sent negative kB]", fontsize=20)
         plt.gca().xaxis.set_major_formatter(mdt.DateFormatter('%y-%m-%d %T'))
+        plt.gca().yaxis.set_major_formatter('{x:.04f}')
         if cwl_file is not None:
             plot_shades(df_steps, label)
         maxY = 0
@@ -355,7 +353,7 @@ def plot_prom_profiling(df: pd.DataFrame,
         plt.xlim([time_series[0], time_series[-1]])
         plt.xlabel("Time", fontsize=20)
         plt.xticks(fontsize=20)
-        plt.ylabel("Network usage KB", fontsize=20)
+        plt.ylabel("Network usage kB", fontsize=20)
         plt.yticks(fontsize=20)
         plt.savefig(name_prefix + '_Network_Usage.png', bbox_inches='tight', dpi=DPI)
     # Gant Plot
