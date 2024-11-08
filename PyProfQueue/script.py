@@ -365,7 +365,7 @@ class Script:
         if bash_options is None:
             bash_options = ['']
 
-        with NamedTemporaryFile(mode='w', delete=False, prefix='PyProfQueueTmp_') as profilefile:
+        with NamedTemporaryFile(mode='w', delete=False, prefix='PyProfQueueTmp_', suffix='.sh') as profilefile:
             self.tmp_profile_script = profilefile.name
             profilefile.seek(0)
             profilefile.write('#!/bin/bash\n')
@@ -411,7 +411,7 @@ class Script:
             if self.read_queue_system is None:
                 self.tmp_work_script = self.work_script
             else:
-                with NamedTemporaryFile(mode='w', delete=False, prefix='PyProfQueueTmp_') as workfile:
+                with NamedTemporaryFile(mode='w', delete=False, prefix='PyProfQueueTmp_', suffix='.sh') as workfile:
                     self.tmp_work_script = workfile.name
                 self.create_workfile()
         return
