@@ -371,7 +371,9 @@ class Script:
             profilefile.write('#!/bin/bash\n')
             if self.queue_system is not None:
                 self.add_options(profilefile)
-
+            if 'option_environment_variable' in self.queue_system_parameters:
+                for key_queue, value_queue in self.queue_system_parameters['option_environment_variable'].items():
+                    self.work_dir = self.work_dir.replace(value_queue, key_queue)
             profilefile.write('export WORKING_DIR={}\n'.format(self.work_dir))
             profilefile.write('if [ ! -d  "${WORKING_DIR}" ]; then\n')
             profilefile.write('  mkdir ${WORKING_DIR}\n')
@@ -415,7 +417,6 @@ class Script:
                     self.tmp_work_script = workfile.name
                 self.create_workfile()
         return
-
 
 class Options:
     """
