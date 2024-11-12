@@ -14,6 +14,7 @@ parser.add_argument("-s", "--start_time", type=str, help="start time of the code
 parser.add_argument("-e", "--end_time", type=str, help="end time of the code")
 parser.add_argument("-i", "--ip_address", type=str, default="http://localhost:9090",
                     help="IP address of the Prometheus instance")
+parser.add_argument("-a", "--store_all", action='store_true', help="store all data from the database")
 args = parser.parse_args()
 
 
@@ -54,6 +55,15 @@ def prometheus_scrape(connection: PromqlHttpApi, command: str, begin: datetime, 
     return queue_dict
 
 
+def prometheus_scrape_all(connection: PromqlHttpApi, begin: datetime, end: datetime, step: str = '5s'):
+    queue_results = connection.query_range('{job!=""}', start=begin, end=end, step=step)()['result']
+    queue_dict = {}
+    for result in queue_results:
+        key_name = result['metric']['job'] + '=' + result['metric']['__name__']
+        queue_dict[key_name] = np.array([[float(x[0]), float(x[1])] for x in result['values']])
+    return queue_dict
+
+
 def pandas_merge(dictionary: dict, dataframe: pd.DataFrame = None):
     for key in dictionary.keys():
         if dataframe is None:
@@ -68,57 +78,66 @@ def main():
     global args
     api = PromqlHttpApi(args.ip_address)
     start_time, end_time = check_options()
-    cpu_usage_dict = prometheus_scrape(connection=api,
-                                       command='100 - irate(node_cpu_seconds_total{mode="idle"}[1m])*100',
-                                       begin=start_time, end=end_time,
-                                       given_name='CPU Usage:', name_convention='cpu')
-    Full_df = pandas_merge(dictionary=cpu_usage_dict)
+    if args.store_all:
+        full_scrape_dict = prometheus_scrape_all(connection=api,
+                                                 begin=start_time, end=end_time)
+        Full_df = pandas_merge(dictionary=full_scrape_dict)
+        Full_df['Time'] = Full_df['Time'].apply(lambda x: strftime('%Y-%m-%d %H:%M:%S', localtime(x)))
 
-    cpu_iowait_dict = prometheus_scrape(connection=api,
-                                        command='irate(node_cpu_seconds_total{mode="iowait"}[1m])*100',
+        Full_df.to_feather(args.output + '/full_prometheus_data')
+    else:
+        cpu_usage_dict = prometheus_scrape(connection=api,
+                                           command='100 - irate(node_cpu_seconds_total{mode="idle"}[1m])*100',
+                                           begin=start_time, end=end_time,
+                                           given_name='CPU Usage:', name_convention='cpu')
+        Full_df = pandas_merge(dictionary=cpu_usage_dict)
+
+        cpu_iowait_dict = prometheus_scrape(connection=api,
+                                            command='irate(node_cpu_seconds_total{mode="iowait"}[1m])*100',
+                                            begin=start_time, end=end_time,
+                                            given_name='CPU IO Wait:', name_convention='cpu')
+        Full_df = pandas_merge(dictionary=cpu_iowait_dict, dataframe=Full_df)
+
+        max_memory_dict = prometheus_scrape(connection=api,
+                                        command='(node_memory_MemTotal_bytes)/(1000000000)',
                                         begin=start_time, end=end_time,
-                                        given_name='CPU IO Wait:', name_convention='cpu')
-    Full_df = pandas_merge(dictionary=cpu_iowait_dict, dataframe=Full_df)
+                                        given_name='Memory Total [GB]')
+        Full_df = pandas_merge(dictionary=max_memory_dict, dataframe=Full_df)
 
-    max_memory_dict = prometheus_scrape(connection=api,
-                                    command='(node_memory_MemTotal_bytes)/(1000000000)',
-                                    begin=start_time, end=end_time,
-                                    given_name='Memory Total [GB]')
-    Full_df = pandas_merge(dictionary=max_memory_dict, dataframe=Full_df)
-
-    memory_dict = prometheus_scrape(connection=api,
-                                    command='(node_memory_MemTotal_bytes-node_memory_MemAvailable_bytes)/(1000000000)',
-                                    begin=start_time, end=end_time,
-                                    given_name='Memory Usage [GB]')
-    Full_df = pandas_merge(dictionary=memory_dict, dataframe=Full_df)
-
-    disk_write_dict = prometheus_scrape(connection=api,
-                                        command='(irate(node_disk_written_bytes_total[1m]))/(1000000000)',
+        memory_dict = prometheus_scrape(connection=api,
+                                        command='(node_memory_MemTotal_bytes-node_memory_MemAvailable_bytes)/(1000000000)',
                                         begin=start_time, end=end_time,
-                                        given_name='Write:', name_convention='device')
-    Full_df = pandas_merge(dictionary=disk_write_dict, dataframe=Full_df)
+                                        given_name='Memory Usage [GB]')
+        Full_df = pandas_merge(dictionary=memory_dict, dataframe=Full_df)
 
-    disk_read_dict = prometheus_scrape(connection=api,
-                                       command='(irate(node_disk_read_bytes_total[1m]))/(1000000000)',
-                                       begin=start_time, end=end_time,
-                                       given_name='Read:', name_convention='device')
-    Full_df = pandas_merge(dictionary=disk_read_dict, dataframe=Full_df)
+        disk_write_dict = prometheus_scrape(connection=api,
+                                            command='(irate(node_disk_written_bytes_total[1m]))/(1000000000)',
+                                            begin=start_time, end=end_time,
+                                            given_name='Write:', name_convention='device')
+        Full_df = pandas_merge(dictionary=disk_write_dict, dataframe=Full_df)
 
-    network_receive_KB_dict = prometheus_scrape(connection=api,
-                                                command='irate(node_network_receive_bytes_total[1m])/1e3',
-                                                begin=start_time, end=end_time,
-                                                given_name='Received:', name_convention='device')
-    Full_df = pandas_merge(dictionary=network_receive_KB_dict, dataframe=Full_df)
+        disk_read_dict = prometheus_scrape(connection=api,
+                                           command='(irate(node_disk_read_bytes_total[1m]))/(1000000000)',
+                                           begin=start_time, end=end_time,
+                                           given_name='Read:', name_convention='device')
+        Full_df = pandas_merge(dictionary=disk_read_dict, dataframe=Full_df)
 
-    network_send_KB_dict = prometheus_scrape(connection=api,
-                                             command='irate(node_network_transmit_bytes_total[1m])/1e3',
-                                             begin=start_time, end=end_time,
-                                             given_name='Sent:', name_convention='device')
-    Full_df = pandas_merge(dictionary=network_send_KB_dict, dataframe=Full_df)
+        network_receive_KB_dict = prometheus_scrape(connection=api,
+                                                    command='irate(node_network_receive_bytes_total[1m])/1e3',
+                                                    begin=start_time, end=end_time,
+                                                    given_name='Received:', name_convention='device')
+        Full_df = pandas_merge(dictionary=network_receive_KB_dict, dataframe=Full_df)
 
-    Full_df['Time'] = Full_df['Time'].apply(lambda x: strftime('%Y-%m-%d %H:%M:%S', localtime(x)))
+        network_send_KB_dict = prometheus_scrape(connection=api,
+                                                 command='irate(node_network_transmit_bytes_total[1m])/1e3',
+                                                 begin=start_time, end=end_time,
+                                                 given_name='Sent:', name_convention='device')
+        Full_df = pandas_merge(dictionary=network_send_KB_dict, dataframe=Full_df)
 
-    Full_df.to_feather(args.output + '/prometheus_data')
+        Full_df['Time'] = Full_df['Time'].apply(lambda x: strftime('%Y-%m-%d %H:%M:%S', localtime(x)))
+
+        Full_df.to_feather(args.output + '/prometheus_data')
+
 
 if __name__ == '__main__':
     main()
