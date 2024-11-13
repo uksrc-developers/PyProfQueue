@@ -86,22 +86,32 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list, works: list = 
 
     lines_profile = profilerdict['code_line']
     code_call = 0
-    for work_line in range(len(works)):
-        for code_line in range(len(lines_profile)):
-            if lines_profile[code_line] in works[work_line]:
+    if tmp_work_script is not None:
+        for work_line in range(len(works)):
+            for code_line in range(len(lines_profile)):
+                if lines_profile[code_line] in works[work_line]:
+                    if 'options' in profilerdict.keys():
+                        this_profiling_call = profiling_call + 'linaro_'+str(code_call)+'.map ' + ' '.join(profilerdict['options'])
+                    else:
+                        this_profiling_call = profiling_call + 'linaro_'+str(code_call) + '.map'
+                    code_call += 1
+                    works[work_line] = this_profiling_call + ' ' + works[work_line]
+                    lines_profile.pop(code_line)
+                    break
+        works = [works[0]] + pass_options + works[1:]
+        profilefile.write(profilerdict['script_call'] + ' '
+                                                        '{}'.format(tmp_work_script) + ' -d ${LINARO_RUNNING_DIR} ' +
+                          '{}\n'.format(' '.join(str(x) for x in bash_options)))
+        profilefile.write('\n')
+    else:
+        for work_line in range(len(works)):
+            for profline in lines_profile:
                 if 'options' in profilerdict.keys():
-                    this_profiling_call = profiling_call + 'linaro_map_'+str(code_call)+'.map ' + ' '.join(profilerdict['options'])
+                    this_profiling_call = profiling_call + 'linaro_'+str(profline)+'.map ' + ' '.join(profilerdict['options'])
                 else:
-                    this_profiling_call = profiling_call + 'linaro_map_'+str(code_call) + '.map'
-                code_call += 1
-                works[work_line] = this_profiling_call + ' ' + works[work_line]
-                lines_profile.pop(code_line)
-                break
-    works = [works[0]] + pass_options + works[1:]
-    profilefile.write(profilerdict['script_call'] + ' '
-                      '{}'.format(tmp_work_script) + ' -d ${LINARO_RUNNING_DIR} ' +
-                      '{}\n'.format(' '.join(str(x) for x in bash_options)))
-    profilefile.write('\n')
+                    this_profiling_call = profiling_call + 'linaro_' + str(profline) + '.map'
+                profilefile.write(this_profiling_call + ' ' + works[work_line] + '\n')
+        profilefile.write('\n')
     return works
 
 

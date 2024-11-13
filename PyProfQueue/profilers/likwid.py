@@ -64,7 +64,7 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list = [''], works: 
     -------
     None
     """
-    if tmp_work_script != 'None':
+    if tmp_work_script is not None:
         profilefile.write('likwid-perfctr -g MEM_DP -t 300s -o ${LIKWID_RUNNING_DIR}/likwid_output.txt -O -f bash ' +
                       '{} {}\n'.format(tmp_work_script, ' '.join(str(x) for x in bash_options)))
     else:

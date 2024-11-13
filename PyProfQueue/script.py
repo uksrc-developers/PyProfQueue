@@ -160,12 +160,12 @@ class Script:
                     self.works = current_prof.define_run(profilefile=profilefile,
                                                          bash_options=bash_options,
                                                          tmp_work_script=self.tmp_work_script,
-                                                         works=self.works,
+                                                         works=[self.works],
                                                          profilerdict=self.profiling[profiler] | {'work_dir': self.work_dir})
                 else:
                     self.works = current_prof.define_run(profilefile=profilefile,
                                                          bash_options=bash_options,
-                                                         tmp_work_script='None',
+                                                         tmp_work_script=None,
                                                          works=[self.works],
                                                          profilerdict=self.profiling[profiler] | {'work_dir': self.work_dir})
                 self.at_execute = True
