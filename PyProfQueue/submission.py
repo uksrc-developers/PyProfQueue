@@ -49,8 +49,7 @@ def write_files(script: Script,
            tmp_work_script: str = './tmp_workfile.sh',
            tmp_profile_script: str = './tmp_profilefile.sh',
            bash_options: list = None,
-           leave_scripts: bool = False,
-           test: bool = False):
+           leave_scripts: bool = False):
     '''
     Create the temporary profile file and temporary work script in order to submit them to the appropriate queuing
     system.
@@ -77,11 +76,10 @@ def write_files(script: Script,
         bash_options = ['']
     script.create_profilefile(bash_options)
 
-    if leave_scripts or test:
-        time.sleep(1)
-        subprocess.run(' '.join(["mv", getattr(script, 'tmp_profile_script'), tmp_profile_script]), shell=True)
+    if leave_scripts:
+        subprocess.run(' '.join(["cp", getattr(script, 'tmp_profile_script'), tmp_profile_script]), shell=True)
         if getattr(script, 'tmp_work_script') is not None:
-            subprocess.run(' '.join(["mv", getattr(script, 'tmp_work_script'), tmp_work_script]), shell=True)
+            subprocess.run(' '.join(["cp", getattr(script, 'tmp_work_script'), tmp_work_script]), shell=True)
         return
     else:
         return
