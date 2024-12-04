@@ -60,6 +60,11 @@ class Script:
                  profiling: dict = None
                  ):
         if True:  # If statement added to allow for the collapse of the initiation of variables
+            self.tmp_work_script = None
+            self.tmp_profile_script = None
+            self.work_dir = None
+            self.profiling = profiling
+            self.at_execute = False  # boolean to see if a profiler is already used at the execution line.
             self.queue_system = queue_system
             if self.queue_system is not None:
                 try:
@@ -75,18 +80,14 @@ class Script:
             else:
                 self.queue_system_parameters = None
                 self.obj_options = Options(queue_system_parameters=None, queue_options=queue_options)
+                self.work_dir = queue_options["work_dir"]
             if work_script is not None:
                 self.work_script = work_script
             elif work_command is not None:
                 self.work_script = None
-                self.works = work_command
+                self.works = [work_command]
             else:
                 exit(f'Either work_script or work_command must be specified.')
-            self.tmp_work_script = None
-            self.tmp_profile_script = None
-            self.work_dir = None
-            self.profiling = profiling
-            self.at_execute = False  # boolean to see if a profiler is already used at the execution line.
 
             self.read_queue_system = read_queue_system
             if self.read_queue_system is not None:
@@ -98,13 +99,15 @@ class Script:
             else:
                 self.read_queue_system_parameters = None
 
-        if self.queue_system != 'None':
+        if self.queue_system != 'None' and self.read_queue_system is not None:
             self.option_start = self.queue_system_parameters['Option_Flag']
             self.submission = self.queue_system_parameters['submission_command']
 
         if self.read_queue_system != 'None' and self.read_queue_system is not None:
             self.read_option_start = self.read_queue_system_parameters['Option_Flag']
-            self.works = self.read_script()
+        else:
+            self.read_option_start = '@~@'
+        self.works = self.read_script()
 
 
     def initialise_profiling(self, profiler, profilefile):
@@ -298,7 +301,8 @@ class Script:
         -------
 
         """
-        with open(self.tmp_work_script, 'w') as workfile:
+        with NamedTemporaryFile(mode='w', delete=False, prefix='PyProfQueueTmp_Work_', suffix='.sh') as workfile:
+            self.tmp_work_script = workfile.name
             workfile.seek(0)
             for line in self.works:
                 workfile.write(line)
@@ -365,16 +369,22 @@ class Script:
         if bash_options is None:
             bash_options = ['']
 
+        if self.work_script is not None:
+            self.create_workfile()
+
         with NamedTemporaryFile(mode='w', delete=False, prefix='PyProfQueueTmp_', suffix='.sh') as profilefile:
             self.tmp_profile_script = profilefile.name
             profilefile.seek(0)
             profilefile.write('#!/bin/bash\n')
             if self.queue_system is not None:
                 self.add_options(profilefile)
-            if 'option_environment_variable' in self.queue_system_parameters:
-                for key_queue, value_queue in self.queue_system_parameters['option_environment_variable'].items():
-                    self.work_dir = self.work_dir.replace(value_queue, key_queue)
-            profilefile.write('export WORKING_DIR={}\n'.format(self.work_dir))
+                if 'option_environment_variable' in self.queue_system_parameters:
+                    for key_queue, value_queue in self.queue_system_parameters['option_environment_variable'].items():
+                        self.work_dir = self.work_dir.replace(value_queue, key_queue)
+                profilefile.write('export WORKING_DIR={}\n'.format(self.work_dir))
+            else:
+                profilefile.write('\n')
+                profilefile.write('export WORKING_DIR={}\n'.format(self.work_dir))
             profilefile.write('if [ ! -d  "${WORKING_DIR}" ]; then\n')
             profilefile.write('  mkdir ${WORKING_DIR}\n')
             profilefile.write('fi\n')
@@ -408,14 +418,6 @@ class Script:
                 profilefile.write('export START=$(date -d @${START_TIME} +"%Y-%m-%d %H:%M:%S")\n')
                 profilefile.write('export END=$(date -d @${END_TIME} +"%Y-%m-%d %H:%M:%S")\n\n')
             profilefile.write("echo 'Run time: '$((${DURATION}/60/60))':'$((${DURATION}/60%60 ))':'$((${DURATION}%60))\n")
-
-        if self.work_script is not None:
-            if self.read_queue_system is None:
-                self.tmp_work_script = self.work_script
-            else:
-                with NamedTemporaryFile(mode='w', delete=False, prefix='PyProfQueueTmp_', suffix='.sh') as workfile:
-                    self.tmp_work_script = workfile.name
-                self.create_workfile()
         return
 
 class Options:
@@ -436,8 +438,8 @@ class Options:
             if queue_options is not None:
                 if 'work_dir' not in queue_options.keys():
                     exit('work_dir parameter is required for queue_options if no batch system is being used.')
-                else:
-                    self.overwrite_options(queue_options)
+                #else:
+                #    self.overwrite_options(queue_options)
             else:
                 exit('work_dir parameter is required for queue_options if no batch system is being used.')
         elif queue_options is None:

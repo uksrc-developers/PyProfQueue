@@ -64,12 +64,28 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list = [''], works: 
     -------
     None
     """
-    if tmp_work_script is not None:
-        profilefile.write('likwid-perfctr -g MEM_DP -t 300s -o ${LIKWID_RUNNING_DIR}/likwid_output.txt -O -f bash ' +
-                      '{} {}\n'.format(tmp_work_script, ' '.join(str(x) for x in bash_options)))
+
+    profiling_call = 'likwid-perfctr -g MEM_DP -t 300s -o ${LIKWID_RUNNING_DIR}/likwid_output.txt -O -f '
+
+    if tmp_work_script is not None and (profilerdict is None or 'code_line' not in profilerdict.keys()):
+        profilefile.write(profiling_call + 'bash ' +
+                      '{} {}\n'.format(tmp_work_script, ' '.join([str(x) for x in bash_options])))
+    elif ('code_line' in profilerdict.keys()):
+        with open(tmp_work_script, 'r') as workfile:
+            workfile.seek(0)
+            data = workfile.readlines()
+        for line in range(len(data)):
+            for profile_line in profilerdict['code_line']:
+                if data[line] == profile_line+'\n':
+                    print(profiling_call)
+                    data[line] = profiling_call + data[line].strip() + '\n'
+        with open(tmp_work_script, 'w') as workfile:
+            workfile.seek(0)
+            workfile.writelines(data)
+        profilefile.write('bash {} {}\n'.format(tmp_work_script, ' '.join([str(x) for x in bash_options])))
     else:
         profilefile.write('likwid-perfctr -g MEM_DP -t 300s -o ${LIKWID_RUNNING_DIR}/likwid_output.txt -O -f ' +
-                          ' '.join(works) + ' {}\n'.format(' '.join(str(x) for x in bash_options)))
+                          ' '.join(works) + ' {}\n'.format(' '.join([str(x) for x in bash_options])))
     profilefile.write('\n')
     return works
 

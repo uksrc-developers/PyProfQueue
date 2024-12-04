@@ -91,9 +91,9 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list, works: list = 
             for code_line in range(len(lines_profile)):
                 if lines_profile[code_line] in works[work_line]:
                     if 'options' in profilerdict.keys():
-                        this_profiling_call = profiling_call + 'linaro_'+str(code_call)+'.map ' + ' '.join(profilerdict['options'])
+                        this_profiling_call = profiling_call + '/linaro_'+str(code_call)+'.map ' + ' '.join(profilerdict['options'])
                     else:
-                        this_profiling_call = profiling_call + 'linaro_'+str(code_call) + '.map'
+                        this_profiling_call = profiling_call + '/linaro_'+str(code_call) + '.map'
                     code_call += 1
                     works[work_line] = this_profiling_call + ' ' + works[work_line]
                     lines_profile.pop(code_line)
@@ -105,12 +105,12 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list, works: list = 
         profilefile.write('\n')
     else:
         for work_line in range(len(works)):
-            for profline in lines_profile:
-                if 'options' in profilerdict.keys():
-                    this_profiling_call = profiling_call + 'linaro_'+str(profline)+'.map ' + ' '.join(profilerdict['options'])
-                else:
-                    this_profiling_call = profiling_call + 'linaro_' + str(profline) + '.map'
-                profilefile.write(this_profiling_call + ' ' + works[work_line] + '\n')
+            if 'options' in profilerdict.keys():
+                this_profiling_call = profiling_call + '/linaro_'+str(code_call)+'.map ' + ' '.join(profilerdict['options'])
+            else:
+                this_profiling_call = profiling_call + '/linaro_' + str(code_call) + '.map'
+            profilefile.write(this_profiling_call + ' ' + works[work_line] + '\n')
+            code_call += 1
         profilefile.write('\n')
     return works
 
