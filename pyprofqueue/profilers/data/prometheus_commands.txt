@@ -1,19 +1,19 @@
 mkdir ${PROMETHEUS_RUNNING_DIR}
 # *=*
-${PROMETHEUS_SOFTWARE}/prometheus/prometheus --config.file=${PROMETHEUS_SOFTWARE}/prometheus/prometheus.yml --storage.tsdb.path=${PROMETHEUS_RUNNING_DIR}/prometheus_data > /dev/null 2>&1 &
+${PROMETHEUS_SOFTWARE}/prometheus/prometheus --config.file=${PROMETHEUS_SOFTWARE}/prometheus/prometheus.yml --web.listen-address=:9301 --storage.tsdb.path=${PROMETHEUS_RUNNING_DIR}/data > /dev/null 2>&1 &
 export PROMETHEUS_PID=$!
-${PROMETHEUS_SOFTWARE}/node_exporter/node_exporter --web.listen-address=:9200  > /dev/null 2>&1 &
+${PROMETHEUS_SOFTWARE}/node_exporter/node_exporter --web.listen-address=:9302  > /dev/null 2>&1 &
 export NODE_PID=$!
 # *=*
 ${PYTHON_INSTANCE} ${PROFILE_SCRAPE}/read_prometheus.py -o "${PROMETHEUS_RUNNING_DIR}" -s "${START}" -e "${END}" -i "${PROMETHEUS_IP}"
 # *=*
-sleep 1
+sleep 15
 kill -TERM ${NODE_PID}
 kill -TERM ${PROMETHEUS_PID}
 # *=*
 echo 'Plotting Prometheus metrics to ${PROMETHEUS_RUNNING_DIR}'
 if [ -f ${WORKING_DIR}/job_output_setup.txt ]; then
-    ${PYTHON_INSTANCE} -c "import pyprofqueue.profilers.prometheus as prom; df, time_series = prom.load_df('${PROMETHEUS_RUNNING_DIR}/prometheus_data'); prom.plot_prom_profiling(df=df, time_series=time_series, name_prefix='${PROMETHEUS_RUNNING_DIR}/Prometheus', cwl_file='${WORKING_DIR}/job_output_setup.txt')"
+    ${PYTHON_INSTANCE} -c "import pyprofqueue.profilers.prometheus as prom; df, time_series = prom.load_df('${PROMETHEUS_RUNNING_DIR}/prometheus_data.ft'); prom.plot_prom_profiling(df=df, time_series=time_series, name_prefix='${PROMETHEUS_RUNNING_DIR}/Prometheus', cwl_file='${WORKING_DIR}/job_output_setup.txt')"
 else
-    ${PYTHON_INSTANCE} -c "import pyprofqueue.profilers.prometheus as prom; df, time_series = prom.load_df('${PROMETHEUS_RUNNING_DIR}/prometheus_data'); prom.plot_prom_profiling(df=df, time_series=time_series, name_prefix='${PROMETHEUS_RUNNING_DIR}/Prometheus')"
+    ${PYTHON_INSTANCE} -c "import pyprofqueue.profilers.prometheus as prom; df, time_series = prom.load_df('${PROMETHEUS_RUNNING_DIR}/prometheus_data.ft'); prom.plot_prom_profiling(df=df, time_series=time_series, name_prefix='${PROMETHEUS_RUNNING_DIR}/Prometheus')"
 fi

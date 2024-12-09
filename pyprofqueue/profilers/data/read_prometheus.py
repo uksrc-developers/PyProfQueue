@@ -136,7 +136,6 @@ def main():
 
         Full_df['Time'] = Full_df['Time'].apply(lambda x: strftime('%Y-%m-%d %H:%M:%S', localtime(x)))
 
-        Full_df.to_feather(args.output + '/prometheus_data')
 
 
 if __name__ == '__main__':

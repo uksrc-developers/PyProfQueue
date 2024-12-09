@@ -48,7 +48,7 @@ def define_initialise(profilefile: io.TextIOWrapper, profilerdict: dict = None):
         exit("Must provide prometheus requirements list, or existing prometheus IP address, neither was given.")
     profilefile.write('# Prometheus initialisation declarations\n')
     if 'ip_address' not in profilerdict.keys():
-        profilefile.write("export PROMETHEUS_IP=http://localhost:9090\n")
+        profilefile.write("export PROMETHEUS_IP=http://localhost:9301\n")
         for i in profilerdict['requirements']:
             profilefile.write(i)
             profilefile.write('\n')
