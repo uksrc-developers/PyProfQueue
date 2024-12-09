@@ -48,7 +48,7 @@ def define_initialise(profilefile: io.TextIOWrapper, profilerdict: dict = None):
 
 
 def define_run(profilefile: io.TextIOWrapper, bash_options: list = [''], works: list = None,
-               tmp_work_script: str = './tmp_workfile.sh', profilerdict: dict = None):
+               tmp_work_script: str = None, work_script: str = None, profilerdict: dict = None):
     """
     define_run calls the user given bash script using likwid to execute and profile the work done.
 
@@ -67,9 +67,12 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list = [''], works: 
 
     profiling_call = 'likwid-perfctr -g MEM_DP -t 300s -o ${LIKWID_RUNNING_DIR}/likwid_output.txt -O -f '
 
-    if tmp_work_script is not None and (profilerdict is None or 'code_line' not in profilerdict.keys()):
+    if tmp_work_script is None and (profilerdict is None or 'code_line' not in profilerdict.keys()):
         profilefile.write(profiling_call + 'bash ' +
-                      '{} {}\n'.format(tmp_work_script, ' '.join([str(x) for x in bash_options])))
+                      '{} {}\n'.format(work_script, ' '.join([str(x) for x in bash_options])))
+    elif (profilerdict is None or 'code_line' not in profilerdict.keys()):
+        profilefile.write(profiling_call + 'bash ' +
+                          '{} {}\n'.format(tmp_work_script, ' '.join([str(x) for x in bash_options])))
     elif ('code_line' in profilerdict.keys()):
         with open(tmp_work_script, 'r') as workfile:
             workfile.seek(0)

@@ -22,5 +22,5 @@ export BAND=$(grep -oP 'MByte/s:\s*\K\d+' ${LIK_OUTPUT} | sort -n | head -n 1)
 sleep 1
 
 echo 'Plotting Likwid output as series'
-${PYTHON_INSTANCE} -c "import PyProfQueue.profilers.likwid as lik; lik.plot_roof_timeseries(likwid_file='${LIKWID_RUNNING_DIR}/likwid_output.txt', name_prefix='${LIKWID_RUNNING_DIR}/Likwid', maxperf=${PERF}, maxband=${BAND});"
-${PYTHON_INSTANCE} -c "import PyProfQueue.profilers.likwid as lik; lik.plot_roof_timeseries(likwid_file='${LIKWID_RUNNING_DIR}/likwid_output.txt', name_prefix='${LIKWID_RUNNING_DIR}/Likwid_Log', maxperf=${PERF}, maxband=${BAND}, log_plot=True);"
+${PYTHON_INSTANCE} -c "import pyprofqueue.profilers.likwid as lik; lik.plot_roof_timeseries(likwid_file='${LIKWID_RUNNING_DIR}/likwid_output.txt', name_prefix='${LIKWID_RUNNING_DIR}/Likwid', maxperf=${PERF}, maxband=${BAND});"
+${PYTHON_INSTANCE} -c "import pyprofqueue.profilers.likwid as lik; lik.plot_roof_timeseries(likwid_file='${LIKWID_RUNNING_DIR}/likwid_output.txt', name_prefix='${LIKWID_RUNNING_DIR}/Likwid_Log', maxperf=${PERF}, maxband=${BAND}, log_plot=True);"

@@ -1,6 +1,6 @@
 mkdir ${PROMETHEUS_RUNNING_DIR}
 # *=*
-${PROMETHEUS_SOFTWARE}/prometheus/prometheus --config.file=${PROMETHEUS_SOFTWARE}/prometheus/prometheus.yml --storage.tsdb.path=${PROMETHEUS_RUNNING_DIR}/data > /dev/null 2>&1 &
+${PROMETHEUS_SOFTWARE}/prometheus/prometheus --config.file=${PROMETHEUS_SOFTWARE}/prometheus/prometheus.yml --storage.tsdb.path=${PROMETHEUS_RUNNING_DIR}/prometheus_data > /dev/null 2>&1 &
 export PROMETHEUS_PID=$!
 ${PROMETHEUS_SOFTWARE}/node_exporter/node_exporter --web.listen-address=:9200  > /dev/null 2>&1 &
 export NODE_PID=$!
@@ -13,7 +13,7 @@ kill -TERM ${PROMETHEUS_PID}
 # *=*
 echo 'Plotting Prometheus metrics to ${PROMETHEUS_RUNNING_DIR}'
 if [ -f ${WORKING_DIR}/job_output_setup.txt ]; then
-    ${PYTHON_INSTANCE} -c "import PyProfQueue.profilers.prometheus as prom; df, time_series = prom.load_df('${PROMETHEUS_RUNNING_DIR}/prometheus_data'); prom.plot_prom_profiling(df=df, time_series=time_series, name_prefix='${PROMETHEUS_RUNNING_DIR}/Prometheus', cwl_file='${WORKING_DIR}/job_output_setup.txt')"
+    ${PYTHON_INSTANCE} -c "import pyprofqueue.profilers.prometheus as prom; df, time_series = prom.load_df('${PROMETHEUS_RUNNING_DIR}/prometheus_data'); prom.plot_prom_profiling(df=df, time_series=time_series, name_prefix='${PROMETHEUS_RUNNING_DIR}/Prometheus', cwl_file='${WORKING_DIR}/job_output_setup.txt')"
 else
-    ${PYTHON_INSTANCE} -c "import PyProfQueue.profilers.prometheus as prom; df, time_series = prom.load_df('${PROMETHEUS_RUNNING_DIR}/prometheus_data'); prom.plot_prom_profiling(df=df, time_series=time_series, name_prefix='${PROMETHEUS_RUNNING_DIR}/Prometheus')"
+    ${PYTHON_INSTANCE} -c "import pyprofqueue.profilers.prometheus as prom; df, time_series = prom.load_df('${PROMETHEUS_RUNNING_DIR}/prometheus_data'); prom.plot_prom_profiling(df=df, time_series=time_series, name_prefix='${PROMETHEUS_RUNNING_DIR}/Prometheus')"
 fi

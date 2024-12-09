@@ -41,7 +41,7 @@ class Script:
 
     Examples
     -------- # As of now this example doesn't apply to this class.
-    #>>> from PyProfQueue.script import Script
+    #>>> from pyprofqueue.script import Script
     #>>> ProfileScript = Script(queue_system='slurm',
                                 work_script='./example.sh',
                                 read_queue_system='slurm',
@@ -69,7 +69,7 @@ class Script:
             if self.queue_system is not None:
                 try:
                     module = ".batch_systems." + self.queue_system
-                    self.queue_system_parameters = importlib.import_module(module, package="PyProfQueue").parameters
+                    self.queue_system_parameters = importlib.import_module(module, package="pyprofqueue").parameters
                 except:
                     exit(f'No compatible queue system was specified, instead {self.queue_system} was provided as a queue system')
                 if bool(queue_options):
@@ -93,7 +93,7 @@ class Script:
             if self.read_queue_system is not None:
                 try:
                     module = ".batch_systems." + self.read_queue_system
-                    self.read_queue_system_parameters = importlib.import_module(module, package="PyProfQueue").parameters
+                    self.read_queue_system_parameters = importlib.import_module(module, package="pyprofqueue").parameters
                 except:
                     exit(f'No compatible read queue system was specified, instead {self.read_queue_system} was provided as a queue system')
             else:
@@ -117,7 +117,7 @@ class Script:
 
         ----------
         profiler: str
-            name of the profiler to be used, must match the .py file name located in PyProfQueue.profilers
+            name of the profiler to be used, must match the .py file name located in pyprofqueue.profilers
                 Currently supports: ["likwid", "prometheus"]
         profilefile: io.TextIOWrapper
             open profile file with write permissions.
@@ -131,7 +131,7 @@ class Script:
                  f"had a value of None")
         else:
             module = ".profilers."+profiler
-            current_prof = importlib.import_module(module, package="PyProfQueue")
+            current_prof = importlib.import_module(module, package="pyprofqueue")
             current_prof.define_initialise(profilefile=profilefile,
                                            profilerdict=self.profiling[profiler])
 
@@ -144,7 +144,7 @@ class Script:
         Parameters
         ----------
         profiler: str
-            name of the profiler to be used, must match the .py file name located in PyProfQueue.profilers
+            name of the profiler to be used, must match the .py file name located in pyprofqueue.profilers
             Currently supports: ["likwid", "prometheus"]
         profilefile: io.TextIOWrapper
             open profile file with write permissions.
@@ -156,19 +156,28 @@ class Script:
 
         """
         module = ".profilers."+profiler
-        current_prof = importlib.import_module(module, package="PyProfQueue")
+        current_prof = importlib.import_module(module, package="pyprofqueue")
         if hasattr(current_prof, "define_run"):
             if not self.at_execute:
-                if self.work_script is not None:
+                if self.work_script is not None and 'code_lines' in self.profiling[profiler].keys():
                     self.works = current_prof.define_run(profilefile=profilefile,
                                                          bash_options=bash_options,
                                                          tmp_work_script=self.tmp_work_script,
+                                                         work_script=self.work_script,
+                                                         works=[self.works],
+                                                         profilerdict=self.profiling[profiler] | {'work_dir': self.work_dir})
+                elif self.work_script is not None:
+                    self.works = current_prof.define_run(profilefile=profilefile,
+                                                         bash_options=bash_options,
+                                                         tmp_work_script=None,
+                                                         work_script=self.work_script,
                                                          works=[self.works],
                                                          profilerdict=self.profiling[profiler] | {'work_dir': self.work_dir})
                 else:
                     self.works = current_prof.define_run(profilefile=profilefile,
                                                          bash_options=bash_options,
                                                          tmp_work_script=None,
+                                                         work_script=self.work_script,
                                                          works=[self.works],
                                                          profilerdict=self.profiling[profiler] | {'work_dir': self.work_dir})
                 self.at_execute = True
@@ -194,6 +203,9 @@ class Script:
         if self.tmp_work_script is not None:
             profilefile.write('bash {} {}\n'.format(self.tmp_work_script,
                                                     ' '.join(str(x) for x in bash_options)))
+        elif self.work_script is not None:
+            profilefile.write('bash {} {}\n'.format(self.work_script,
+                                                    ' '.join(str(x) for x in bash_options)))
         else:
             profilefile.write(' '.join([self.works] + bash_options) + '\n')
         profilefile.write('\n')
@@ -206,7 +218,7 @@ class Script:
         Parameters
         ----------
         profiler: str
-            name of the profiler to be used, must match the .py file name located in PyProfQueue.profilers
+            name of the profiler to be used, must match the .py file name located in pyprofqueue.profilers
                 Currently supports: ["likwid", "prometheus"]
         profilefile: io.TextIOWrapper
             pen profile file with write permissions.
@@ -216,7 +228,7 @@ class Script:
 
         """
         module = ".profilers."+profiler
-        current_prof = importlib.import_module(module, package="PyProfQueue")
+        current_prof = importlib.import_module(module, package="pyprofqueue")
         current_prof.define_end(profilefile=profilefile)
 
     def change_options(self, queue_options: dict):
@@ -369,7 +381,7 @@ class Script:
         if bash_options is None:
             bash_options = ['']
 
-        if self.work_script is not None:
+        if self.work_script is not None and any('code_line' in x for x in self.profiling):
             self.create_workfile()
 
         with NamedTemporaryFile(mode='w', delete=False, prefix='PyProfQueueTmp_', suffix='.sh') as profilefile:

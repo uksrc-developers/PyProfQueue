@@ -28,7 +28,7 @@ The user facing components of PyProfQueue are the *Script* class and *submit* fu
 
 The *Script* class is used in the following way, and the following options are available:
 ```
-script = PyProfQueue.Script(queue_system: str,
+script = pyprofqueue.Script(queue_system: str,
                             work_script: str,
                             read_queue_system: str =None,
                             queue_options: dict = None,
@@ -45,7 +45,7 @@ script = PyProfQueue.Script(queue_system: str,
 
 
 The queue options that PyProfQueue supports are dependent on the batch system, for more details, we advise looking 
-at the dictionaries in ./PyProfQueue/batch_systems/<batch system of interets>.py in order to find option compatibility.
+at the dictionaries in ./pyprofqueue/batch_systems/<batch system of interets>.py in order to find option compatibility.
 
 Any *Script* object, then comes with three additional methods intended to be used by users. These methods are:
 
@@ -73,7 +73,7 @@ script.change_options(queue_options={'time':'24:00:00'})
 The *submit* function serves as the point of execution for PyProfQueue. When called, it will take the given *Script* 
 object, and submit it to the queue system the *Script* object is configured for.
 ```
-PyProfQueue.submit(script: Script,
+pyprofqueue.submit(script: Script,
                    tmp_work_script: str = './tmp_workfile.sh',
                    tmp_profile_script: str = './tmp_profilefile.sh',
                    bash_options: list = [''],
@@ -271,7 +271,7 @@ The following example python script can be used to add the prometheus monitoring
 submit the script to the queue. We have listed the queue options in the *Script* object initialisation even though it 
 would pull them from the bash script in order to show an example of how they would be listed.
 ```python 
-import PyProfQueue as ppq
+import pyprofqueue as ppq
 
 ProfileScript = ppq.Script(queue_system='slurm',
                            work_script='./tmp_workfile.sh',
@@ -401,7 +401,7 @@ ___
 
 ```md
 PyProfQueue
-├── PyProfQueue
+├── pyprofqueue
 │   ├── batch_systems
 │   │   ├── pbs.py
 │   │   ├── slurm.py
@@ -426,15 +426,15 @@ PyProfQueue
 ```
 </details>
 
-The directory *PyProfQueue/PyProfQueue* contains the *script.py* and *submission.py* scripts which house the 
+The directory *PyProfQueue/pyprofqueue* contains the *script.py* and *submission.py* scripts which house the 
 definition of the *Script* class and *submission()* function respectively. 
 
-The directory *PyProfQueue/PyProfQueue/batch_systems* contains the python files which house the dictionaries for each
-batch system that PyProfQueue is compatible with. *PyProfQueue/PyProfQueue/profilers* contains scripts of the individual 
+The directory *PyProfQueue/pyprofqueue/batch_systems* contains the python files which house the dictionaries for each
+batch system that PyProfQueue is compatible with. *PyProfQueue/pyprofqueue/profilers* contains scripts of the individual 
 profilers that PyProfQueue is compatible with including a template version that can be used to add additional profiling 
 software compatibility to PyProfQueue. 
 
-*PyProfQueue/PyProfQueue/profilers/data* contains a script called 
+*PyProfQueue/pyprofqueue/profilers/data* contains a script called 
 *read_prometheus.py* which is used to scrape the prometheus database into a pandas dataframe. It also includes the text 
 files that list the bash commands needed to initialise run and end profiling software, as well as a template version for 
 adding more profiling software compatibility.
@@ -444,18 +444,18 @@ ___
 ## Adding new Batch systems
 ___
 In order to new batch system compatibility, a new .py file has to be created that follows the 
-*PyProfQueue/PyProfQueue/batch_systems/_template_batch.txt* format. If this is added correctly, then any options that 
+*PyProfQueue/pyprofqueue/batch_systems/_template_batch.txt* format. If this is added correctly, then any options that 
 have overlap to pre-existing batch systems files will automatically be able to translate between each other.
 ___
 ## Adding new Profiling software
 ___
 In order to add new profiling software compatibility, a new script would need to be added to the 
-*PyProfQueue/PyProfQueue/profilers* directory. This script would need to have the name of how the specific profiler
+*PyProfQueue/pyprofqueue/profilers* directory. This script would need to have the name of how the specific profiler
 should be called, as well as the following two functions:
 - define_initialise(profilefile: io.TextIOWrapper, profilerdict: dict = None)
 - define_end(profilefile: io.TextIOWrapper)
 
-Both of these functions can read from a .txt file, which can be stored in *PyProfQueue/PyProfQueue/profilers/data*.
+Both of these functions can read from a .txt file, which can be stored in *PyProfQueue/pyprofqueue/profilers/data*.
 The first *define_initialise* is there to add any variable declarations or code to the profiling bash script that would
 be needed in order to run the profiler. The second is any calls needed in order to terminate, or collect data post 
 running the profiler.
