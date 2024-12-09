@@ -84,7 +84,7 @@ def main():
         Full_df = pandas_merge(dictionary=full_scrape_dict)
         Full_df['Time'] = Full_df['Time'].apply(lambda x: strftime('%Y-%m-%d %H:%M:%S', localtime(x)))
 
-        Full_df.to_feather(args.output + '/full_prometheus_data')
+        Full_df.to_feather(args.output + '/full_prometheus_data.ft')
     else:
         cpu_usage_dict = prometheus_scrape(connection=api,
                                            command='100 - irate(node_cpu_seconds_total{mode="idle"}[1m])*100',
@@ -135,6 +135,8 @@ def main():
         Full_df = pandas_merge(dictionary=network_send_KB_dict, dataframe=Full_df)
 
         Full_df['Time'] = Full_df['Time'].apply(lambda x: strftime('%Y-%m-%d %H:%M:%S', localtime(x)))
+
+        Full_df.to_feather(args.output + '/prometheus_data.ft')
 
 
 
