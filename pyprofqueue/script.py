@@ -63,6 +63,7 @@ class Script:
             self.tmp_work_script = None
             self.tmp_profile_script = None
             self.work_dir = None
+            self.works = None
             self.profiling = profiling
             self.at_execute = False  # boolean to see if a profiler is already used at the execution line.
             self.queue_system = queue_system
@@ -107,7 +108,8 @@ class Script:
             self.read_option_start = self.read_queue_system_parameters['Option_Flag']
         else:
             self.read_option_start = '@~@'
-        self.works = self.read_script()
+        self.create_workfile()
+
 
 
     def initialise_profiling(self, profiler, profilefile):
@@ -160,25 +162,25 @@ class Script:
         if hasattr(current_prof, "define_run"):
             if not self.at_execute:
                 if self.work_script is not None and 'code_lines' in self.profiling[profiler].keys():
-                    self.works = current_prof.define_run(profilefile=profilefile,
+                    current_prof.define_run(profilefile=profilefile,
                                                          bash_options=bash_options,
                                                          tmp_work_script=self.tmp_work_script,
                                                          work_script=self.work_script,
-                                                         works=[self.works],
+                                                         works=self.works,
                                                          profilerdict=self.profiling[profiler] | {'work_dir': self.work_dir})
                 elif self.work_script is not None:
-                    self.works = current_prof.define_run(profilefile=profilefile,
+                    current_prof.define_run(profilefile=profilefile,
                                                          bash_options=bash_options,
                                                          tmp_work_script=None,
                                                          work_script=self.work_script,
-                                                         works=[self.works],
+                                                         works=self.works,
                                                          profilerdict=self.profiling[profiler] | {'work_dir': self.work_dir})
                 else:
-                    self.works = current_prof.define_run(profilefile=profilefile,
+                    current_prof.define_run(profilefile=profilefile,
                                                          bash_options=bash_options,
                                                          tmp_work_script=None,
                                                          work_script=self.work_script,
-                                                         works=[self.works],
+                                                         works=self.works,
                                                          profilerdict=self.profiling[profiler] | {'work_dir': self.work_dir})
                 self.at_execute = True
             else:
@@ -316,8 +318,9 @@ class Script:
         with NamedTemporaryFile(mode='w', delete=False, prefix='PyProfQueueTmp_Work_', suffix='.sh') as workfile:
             self.tmp_work_script = workfile.name
             workfile.seek(0)
-            for line in self.works:
-                workfile.write(line)
+            if self.works is not None:
+                for line in self.works:
+                    workfile.write(line)
         return
 
     def add_options(self, profilefile):

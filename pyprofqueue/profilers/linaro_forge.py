@@ -30,8 +30,8 @@ def define_initialise(profilefile: io.TextIOWrapper, profilerdict: dict = None):
     '''
     global linaro_forge_file_path
     global linaro_forge_initEndSplit
-    if 'code_line' not in profilerdict.keys():
-        exit("Linaro Forge requires the 'code_line' entry containing the string of the line where Linaro Forge "
+    if 'code_lines' not in profilerdict.keys():
+        exit("Linaro Forge requires the 'code_lines' entry containing the string of the line where Linaro Forge "
              "should be used for profiling.")
     if 'script_call' not in profilerdict.keys():
         profilerdict['script_call'] = 'bash'
@@ -55,7 +55,7 @@ def define_initialise(profilefile: io.TextIOWrapper, profilerdict: dict = None):
     return
 
 
-def define_run(profilefile: io.TextIOWrapper, bash_options: list, works: list = None,
+def define_run(profilefile: io.TextIOWrapper, bash_options: list, work_script: str = None, works: list = None,
                tmp_work_script: str = './tmp_workfile.sh', profilerdict: dict = None):
     '''
     define_run calls the user given bash script using linaro_forge to execute and profile the work done.
@@ -84,7 +84,7 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list, works: list = 
         '\n'
     ]
 
-    lines_profile = profilerdict['code_line']
+    lines_profile = profilerdict['code_lines']
     code_call = 0
     if tmp_work_script is not None:
         for work_line in range(len(works)):

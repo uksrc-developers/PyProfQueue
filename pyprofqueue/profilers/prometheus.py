@@ -289,7 +289,7 @@ def plot_prom_profiling(df: pd.DataFrame,
             plot_shades(df_steps, label)
         plt.fill_between(time_series, df['Memory Usage [GB]'], 0, label="RAM usage [GB]", linestyle='-', alpha=main_alpha)
         plt.legend(ncol=LegCols, prop={'size': 20}, framealpha=1, bbox_to_anchor=(0.5, -0.1), loc='upper center')
-        plt.ylim([0, df['Memory Usage [GB]'].max()])
+        plt.ylim([0, df['Memory Usage [GB]'].max()*1.2])
         plt.xlim([time_series[0], time_series[-1]])
         plt.xlabel("Time", fontsize=20)
         plt.xticks(fontsize=20)

@@ -90,7 +90,7 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list = [''], works: 
         profilefile.write('likwid-perfctr -g MEM_DP -t 300s -o ${LIKWID_RUNNING_DIR}/likwid_output.txt -O -f ' +
                           ' '.join(works) + ' {}\n'.format(' '.join([str(x) for x in bash_options])))
     profilefile.write('\n')
-    return works
+    return
 
 
 def define_end(profilefile: io.TextIOWrapper):
@@ -133,17 +133,15 @@ def plot_likwid_roof_single(name_prefix: str,
         Dot = False
 
     if maxperf / maxband > 1:
-        maxX = (maxperf / maxband) * 2
-        if Dot:
-            if (maxX < code_opint):
-                maxX = code_opint
+        max_x = (maxperf / maxband) * 2
     else:
-        maxX = 1
-        if Dot:
-            if (maxX < code_opint):
-                maxX = code_opint
+        max_x = 1
 
-    x_Axis = np.append(np.linspace(0, maxperf / maxband, 10), maxX)
+    if Dot:
+        if (max_x < code_opint):
+            max_x = code_opint
+
+    x_Axis = np.append(np.linspace(0, maxperf / maxband, 10), max_x)
     y = np.array([x * maxband if ((x * maxband) < maxperf) else maxperf for x in x_Axis])
     Roofline = plt.figure(figsize=(10, 7))
     Roofline.suptitle("Roofline Model", fontsize=20)
@@ -202,8 +200,8 @@ def plot_roof_timeseries(likwid_file: str,
     else:
         max_x = 1
 
-    if max_x < code_opint.mean():
-        max_x = code_opint.mean()
+    if max_x < code_opint.max():
+        max_x = code_opint.max()
 
     x_axis = np.append(np.linspace(0, maxperf / maxband, 10), max_x)
     y = np.array([x * maxband if ((x * maxband) < maxperf) else maxperf for x in x_axis])

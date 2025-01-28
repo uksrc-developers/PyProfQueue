@@ -90,8 +90,9 @@ def main():
                                            command='100 - irate(node_cpu_seconds_total{mode="idle"}[1m])*100',
                                            begin=start_time, end=end_time,
                                            given_name='CPU Usage:', name_convention='cpu')
+        print(cpu_usage_dict)
         Full_df = pandas_merge(dictionary=cpu_usage_dict)
-
+        print(Full_df)
         cpu_iowait_dict = prometheus_scrape(connection=api,
                                             command='irate(node_cpu_seconds_total{mode="iowait"}[1m])*100',
                                             begin=start_time, end=end_time,
