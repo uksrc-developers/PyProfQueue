@@ -80,7 +80,6 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list = [''], works: 
         for line in range(len(data)):
             for profile_line in profilerdict['code_line']:
                 if data[line] == profile_line+'\n':
-                    print(profiling_call)
                     data[line] = profiling_call + data[line].strip() + '\n'
         with open(tmp_work_script, 'w') as workfile:
             workfile.seek(0)
@@ -203,7 +202,7 @@ def plot_roof_timeseries(likwid_file: str,
     if max_x < code_opint.max():
         max_x = code_opint.max()
 
-    x_axis = np.append(np.linspace(0, maxperf / maxband, 10), max_x)
+    x_axis = np.append(np.linspace(0, maxperf / maxband, 10), max_x*1.1)
     y = np.array([x * maxband if ((x * maxband) < maxperf) else maxperf for x in x_axis])
 
     fig, axs = plt.subplots(1, 1, sharex=True, sharey=True)
@@ -225,12 +224,13 @@ def plot_roof_timeseries(likwid_file: str,
     points = axs.add_collection(pc)
     fig.colorbar(line, ax=axs, label='Time [s]')
 
-    axs.set_xlim(0, max_x)
+    axs.set_xlim(0, max_x*1.1)
     if log_plot:
         axs.set_yscale('log')
         axs.set_ylim(code_mflop.min(), maxperf * 10)
+        axs.set_ylabel('Performance log([MFLOP/s])')
     else:
         axs.set_ylim(0, maxperf*1.1)
+        axs.set_ylabel('Performance [MFLOP/s]')
     axs.set_xlabel('Operational Intensity')
-    axs.set_ylabel('Performance log([MFLOP/s])')
     plt.savefig(name_prefix + '_TimeSeriesRoofline.png', bbox_inches='tight')
