@@ -1,6 +1,6 @@
 mkdir ${PROMETHEUS_RUNNING_DIR}
 # *=*
-${PROMETHEUS_SOFTWARE}/prometheus/prometheus --config.file=${PROMETHEUS_SOFTWARE}/prometheus/prometheus.yml --web.listen-address=:9301 --storage.tsdb.path=${PROMETHEUS_RUNNING_DIR}/data > /dev/null 2>&1 &
+${PROMETHEUS_SOFTWARE}/prometheus/prometheus --config.file=${PROMETHEUS_SOFTWARE}/prometheus/prometheus.yml --web.listen-address=${PROMETHEUS_IP: -5} --storage.tsdb.path=${PROMETHEUS_RUNNING_DIR}/data > /dev/null 2>&1 &
 export PROMETHEUS_PID=$!
 ${PROMETHEUS_SOFTWARE}/node_exporter/node_exporter --web.listen-address=:9303  > /dev/null 2>&1 &
 export NODE_PID=$!
