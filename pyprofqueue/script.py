@@ -82,13 +82,6 @@ class Script:
                 self.queue_system_parameters = None
                 self.obj_options = Options(queue_system_parameters=None, queue_options=queue_options)
                 self.work_dir = queue_options["work_dir"]
-            if work_script is not None:
-                self.work_script = work_script
-            elif work_command is not None:
-                self.work_script = None
-                self.works = [work_command]
-            else:
-                exit(f'Either work_script or work_command must be specified.')
 
             self.read_queue_system = read_queue_system
             if self.read_queue_system is not None:
@@ -100,15 +93,25 @@ class Script:
             else:
                 self.read_queue_system_parameters = None
 
-        if self.queue_system != 'None' and self.read_queue_system is not None:
-            self.option_start = self.queue_system_parameters['Option_Flag']
-            self.submission = self.queue_system_parameters['submission_command']
+            if self.queue_system != 'None' and self.queue_system is not None:
+                self.option_start = self.queue_system_parameters['Option_Flag']
+                self.submission = self.queue_system_parameters['submission_command']
 
-        if self.read_queue_system != 'None' and self.read_queue_system is not None:
-            self.read_option_start = self.read_queue_system_parameters['Option_Flag']
-        else:
-            self.read_option_start = '@~@'
-        self.create_workfile()
+            if self.read_queue_system != 'None' and self.read_queue_system is not None:
+                self.read_option_start = self.read_queue_system_parameters['Option_Flag']
+            else:
+                self.read_option_start = '@~@'
+
+            if work_script is not None:
+                self.work_script = work_script
+                self.works = self.read_script()
+            elif work_command is not None:
+                self.work_script = None
+                self.works = [work_command]
+            else:
+                exit(f'Either work_script or work_command must be specified.')
+
+            self.create_workfile()
 
 
 
@@ -348,12 +351,26 @@ class Script:
                                   value + '\n')
             if key is not None and key == 'work_dir':
                 work_dir = value
+                if (len(self.queue_system_parameters['options'][key][0]) > 1 and
+                        self.queue_system_parameters['options'][key][0][1] != ' '):
+                    pre_option_gap = ' --'
+                    post_option_gap = '='
+                else:
+                    pre_option_gap = ' -'
+                    post_option_gap = ' '
                 if self.read_queue_system is not None:
                     if 'option_environment_variable' in self.read_queue_system_parameters:
                         for key_queue, value_queue in self.read_queue_system_parameters['option_environment_variable'].items():
                             if value_queue in value:
                                 work_dir = work_dir.replace(value_queue, key_queue)
                 self.work_dir = work_dir
+                if 'option_environment_variable' in self.queue_system_parameters:
+                    for key_queue, value_queue in self.queue_system_parameters['option_environment_variable'].items():
+                        if value_queue in value:
+                            work_dir = work_dir.replace(key_queue, value_queue)
+                profilefile.write(self.queue_system_parameters['Option_Flag'] + pre_option_gap +
+                                  self.queue_system_parameters['options'][key][0] + post_option_gap +
+                                  work_dir + '\n')
 
         if self.work_dir is None:
             self.work_dir = os.getcwd()

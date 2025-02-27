@@ -93,9 +93,9 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list, work_script: s
                     if 'options' in profilerdict.keys():
                         this_profiling_call = profiling_call + '/linaro_'+str(code_call)+'.map ' + ' '.join(profilerdict['options'])
                     else:
-                        this_profiling_call = profiling_call + '/linaro_'+str(code_call) + '.map'
+                        this_profiling_call = profiling_call + '/linaro_'+str(code_call) + '.map '
                     code_call += 1
-                    works[work_line] = this_profiling_call + ' ' + works[work_line]
+                    works[work_line] = this_profiling_call + ' ' + works[work_line] + ' > /std_linaro_'+str(code_call) + '.txt 2>&1'
                     lines_profile.pop(code_line)
                     break
         works = [works[0]] + pass_options + works[1:]
@@ -109,7 +109,14 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list, work_script: s
                 this_profiling_call = profiling_call + '/linaro_'+str(code_call)+'.map ' + ' '.join(profilerdict['options'])
             else:
                 this_profiling_call = profiling_call + '/linaro_' + str(code_call) + '.map'
-            profilefile.write(this_profiling_call + ' ' + works[work_line] + '\n')
+            this_profiling_call_end = '\n'
+            if 'silent' in profilerdict.keys():
+                this_profiling_call_end = ' > ${LINARO_RUNNING_DIR}/linaro_'+str(code_call)+'_stdout.txt 2>&1' + this_profiling_call_end
+
+            if 'command_options' in profilerdict.keys() and code_call in profilerdict['command_options']:
+                profilefile.write(this_profiling_call + ' ' + works[work_line] + ' ' + ' '.join(profilerdict['command_options'][code_call]) + this_profiling_call_end)
+            else:
+                profilefile.write(this_profiling_call + ' ' + works[work_line] + this_profiling_call_end)
             code_call += 1
         profilefile.write('\n')
     return works
