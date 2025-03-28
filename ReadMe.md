@@ -23,6 +23,7 @@ The user facing components of PyProfQueue are the *Script* class and *submit* fu
 <details>
 <summary>Installation</summary>
 Installation should be simple through PyPi. A simple pip install should pull the most up-to-date version of pyprofqueue.
+
 ```
 $pip install pyprofqueue
 ```
@@ -35,6 +36,7 @@ We recommend using a python environment when using this library to ensure versio
 ### Script Class
 
 The *Script* class is used in the following way, and the following options are available:
+
 ```
 script = pyprofqueue.Script(queue_system: str,
                             work_script: str,
@@ -75,8 +77,8 @@ script.change_options(queue_options={'time':'24:00:00'})
 
 
 <details>
-
 <summary>Submit Function</summary>
+
 ### Submit Function
 The *submit* function serves as the point of execution for PyProfQueue. When called, it will take the given *Script* 
 object, and submit it to the queue system the *Script* object is configured for.
@@ -96,6 +98,33 @@ pyprofqueue.submit(script: Script,
 |   bash_options (Optional)   | List of options that the user provided bash script may require. Defaults to [''].                                                                                                                                 |
 |  leave_scripts (Optional)   | Boolean to determine if the temporary scripts should be left or removed after submission. Defaults to True                                                                                                         |
 |       test (Optional)       | Boolean to determine if the script should be submitted, or if the command that would be used should be printed to the terminal. Additionally, this leaves the temporary scripts in tackt so they can be inspected. |
+
+</details>
+
+<details>
+<summary>Utility Functions</summary>
+
+### Utility Functions
+
+The current utility functions provided by pyprofqueue allow for the extraction and plotting of profiling data from the
+[slurm profiling plugin](https://slurm.schedmd.com/hdf5_profile_user_guide.html) when a workflow has been executed 
+using the [toil-cwl](https://toil.readthedocs.io/en/3.10.1/running/cwl.html) package to orchestrate slurm submission.
+
+When a toil workflow has finished, the following function will create a dictionary containing the information of the 
+executed jobs:
+
+```python
+import pyprofqueue as pypr
+
+ouptut_dictionary = pypr.plot_profiling_data(</TOIL/BASE/OUTPUT/DIR>);
+```
+Replacing ***</TOIL/BASE/OUTPUT/DIR>*** with the base output directory that was provided to toil. This allows the function to
+search the output directory for the necessary files in order to find the *job_id*, requested memory, requested cpu core
+count, and the profiling data for each submitted step. Additionally, if the ***pd.DataFrame*** of the step contains
+three or more time steps, then the average CPU utilisation, RAM usage and I/O usage can be plotted. The outputs from 
+the slurm profiling, as well as the plots, are stored in a new directory, *slurm_profiling*, created in the toil
+output directory.
+
 
 </details>
 
@@ -334,12 +363,14 @@ ___
 
 For the sake of PyProfQueue, the required python version is at least 3.10, as this package utilises the match 
 functionality.
-- numpy
 - pytz
+- h5py
+- numpy
+- tables
 - pyarrow
 - matplotlib
-- promql_http_api==0.3.3
 - pandas<=2.2.1
+- promql_http_api==0.3.3
 </details>
 
 
@@ -428,7 +459,8 @@ PyProfQueue
 │   ├── __init__.py
 │   ├── plot.py
 │   ├── script.py
-│   └── submission.py
+│   ├── submission.py
+│   └── utils.py
 ├── ReadMe.md
 └── setup.py
 ```
