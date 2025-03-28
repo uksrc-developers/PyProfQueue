@@ -21,7 +21,15 @@ ___
 The user facing components of PyProfQueue are the *Script* class and *submit* function.
 
 <details>
+<summary>Installation</summary>
+Installation should be simple through PyPi. A simple pip install should pull the most up-to-date version of pyprofqueue.
+```
+$pip install pyprofqueue
+```
+We recommend using a python environment when using this library to ensure version compatibilities of dependencies.
 
+</details>
+<details>
 <summary>Script Class</summary>
 
 ### Script Class
