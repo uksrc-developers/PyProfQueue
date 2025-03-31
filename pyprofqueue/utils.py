@@ -161,4 +161,4 @@ def plot_profiling_data(job_path: str):
                 ax[2].legend()
 
                 plt.savefig(f"{job_path}/slurm_profiling/{job_number}_{key}.png")
-    return
+    return jobs_info

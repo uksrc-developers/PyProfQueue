@@ -7,7 +7,7 @@ long_description = (this_directory / "ReadMe.md").read_text()
 
 setup(
     name='pyprofqueue',
-    version='0.3.9a0',
+    version='0.3.9',
     url='https://github.com/uksrc-developers/PyProfQueue',
     author='Marcus Keil',
     author_email='marcusk050291@gmail.com',
@@ -20,12 +20,14 @@ setup(
                                   'profilers/data/*.txt',
                                   'profilers/data/read_prometheus.py']},
     install_requires=[
-        'numpy',
         'pytz',
+        'h5py',
+        'numpy',
+        'tables',
         'pyarrow',
         'matplotlib',
-        'promql_http_api==0.3.3',
         'pandas<=2.2.1',
+        'promql_http_api==0.3.3'
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',
