@@ -526,9 +526,10 @@ A Confluence page of what the prometheus and likwid results look like can be fou
 ___
 Developers:
 - Keil, Marcus (UCL)
-- Qaiser, Fawada (Durham)
+- van der Wilde, Matthijs (Durham)
 
 Contributors:
 - Morabito, Leah (Durham)
+- Qaiser, Fawada (Durham)
 - Yates, Jeremy (UCL)
 ___
