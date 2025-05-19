@@ -108,7 +108,8 @@ pyprofqueue.submit(script: Script,
 
 The current utility functions provided by pyprofqueue allow for the extraction and plotting of profiling data from the
 [slurm profiling plugin](https://slurm.schedmd.com/hdf5_profile_user_guide.html) when a workflow has been executed 
-using the [toil-cwl](https://toil.readthedocs.io/en/3.10.1/running/cwl.html) package to orchestrate slurm submission.
+using the [toil-cwl](https://toil.readthedocs.io/en/3.10.1/running/cwl.html) package to orchestrate slurm submission. 
+THIS IS CURRENTLY NOT COMPATIBLE WITH TOIL VERSIONS >= 8.0
 
 When a toil workflow has finished, the following function will create a dictionary containing the information of the 
 executed jobs:
