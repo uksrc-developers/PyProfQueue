@@ -117,7 +117,7 @@ executed jobs:
 ```python
 import pyprofqueue as pypr
 
-ouptut_dictionary = pypr.plot_profiling_data(</TOIL/BASE/OUTPUT/DIR>);
+ouptut_dictionary = pypr.plot_profiling_data(</TOIL/BASE/OUTPUT/DIR>)
 ```
 Replacing ***</TOIL/BASE/OUTPUT/DIR>*** with the base output directory that was provided to toil. This allows the function to
 search the output directory for the necessary files in order to find the *job_id*, requested memory, requested cpu core
