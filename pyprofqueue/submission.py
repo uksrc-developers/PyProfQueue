@@ -28,10 +28,10 @@ def submit(script: Script,
     bash_options : list = ['']
         Optional parameter to add additional strings to the end of the call of the original work script in case
         that script has options it needs to have passed to it.
-    leave_scripts : bool = True
+    leave_scripts : bool = False
         If True, leave scripts after submission.
     test : bool =  False
-        If True, leaves scripts that are created, but does not submit them. Instead, it prints out the command it would
+        If True, it prints out the command it would
         have used if it had submitted them.
     '''
     write_files(script, tmp_work_script, tmp_profile_script, bash_options, leave_scripts)

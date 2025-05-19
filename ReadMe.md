@@ -84,14 +84,14 @@ pyprofqueue.submit(script: Script,
                    leave_scripts: bool = True,
                    test: bool = False):
 ```
-|           Option              | Description                                                                                                                                                                                                        |
-|:-----------------------------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|           `script`            | `Script` object to be submitted to queue                                                                                                                                                                           |
-| `tmp_work_script` (Optional)  | Desired name of temporary work script. Defaults to `"./tmp_workfile.sh"`.                                                                                                                                              |
-|`tmp_profile_script` (Optional)| Desired name of temporary profile script. Defaults to `"./tmp_profilefile.sh"`.                                                                                                                                        |
-|   `bash_options` (Optional)   | List of options that the user provided bash script may require. Defaults to `['']`.                                                                                                                                 |
-|  `leave_scripts` (Optional)   | Boolean to determine if the temporary scripts should be left or removed after submission. Defaults to `True`                                                                                                         |
-|       `test` (Optional)       | Boolean to determine if the script should be submitted, or if the command that would be used should be printed to the terminal. Additionally, this leaves the temporary scripts in tackt so they can be inspected. |
+|           Option            | Description                                                                                                                                                                            |
+|:---------------------------:|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|           script            | *Script* object to be submitted to queue                                                                                                                                               |
+| tmp_work_script (Optional)  | Desired name of temporary work script. Defaults to "./tmp_workfile.sh".                                                                                                                |
+|tmp_profile_script (Optional)| Desired name of temporary profile script. Defaults to "./tmp_profilefile.sh".                                                                                                          |
+|   bash_options (Optional)   | List of options that the user provided bash script may require. Defaults to [''].                                                                                                      |
+|  leave_scripts (Optional)   | Boolean to determine if the temporary scripts should be left or removed after submission. If False then "tmp_work_script" and "tmp_profile_script" will be ignored. Defaults to False. |
+|       test (Optional)       | Boolean to determine if the script should be submitted, or if the command that would be used should be printed to the terminal.                                                        |
 
 </details>
 
@@ -241,14 +241,14 @@ This function plots the results of a prometheus profiling effort. It is compatib
 This function plots the results of a likwid profiling effort as a single point, meaning that it is the average FLOP/s
 and average operational intensity over the entire duration of the job.
 
-|        Option           | Description                                                          |
-|:-----------------------:|----------------------------------------------------------------------|
-|      `name_prefix`      | Desired path and name prefix for the plot                            |
-|        `maxperf`        | Float of the maximum performance listed in likwid output file        |
-|      `maxband`          | Float of the maximum memory bandwidth listed in likwid output file   |
-| `code_name` (Optional)  | String of what to call the code in the legend of the plot            |
-| `code_mflop` (Optional) | Float of the codes MFLOP/s listed in the likwid output               |
-| `code_opint` (Optional) | Float of the codes Operational Intensity listed in the likwid output |
+|        Option         | Description                                                          |
+|:---------------------:|----------------------------------------------------------------------|
+|      name_prefix      | Desired path and name prefix for the plot                            |
+|        maxperf        | Float of the maximum performance listed in likwid output file        |
+|        maxband        | Float of the maximum memory bandwidth listed in likwid output file   |
+| code_name (Optional)  | String of what to call the code in the legend of the plot            |
+| code_mflop (Optional) | Float of the codes MFLOP/s listed in the likwid output               |
+| code_opint (Optional) | Float of the codes Operational Intensity listed in the likwid output |
 
 ### `profilers.likwid.plot_roof_timeseries` function
 This function plots the results of a likwid profiling effort as a single point, meaning that it is the average FLOP/s
@@ -307,7 +307,7 @@ import pyprofqueue as ppq
 ProfileScript = ppq.Script(queue_system='slurm',
                            work_script='./tmp_workfile.sh',
                            queue_options={
-                             'workdir': '/home/queue_work/%x.%j',
+                             'work_dir': '/home/queue_work/%x.%j',
                              'job_name': 'NewName'},
                            profiling={
                              "likwid": {'requirements': ['module load oneAPI_comp/2021.1.0',
@@ -320,6 +320,7 @@ ppq.submit(ProfileScript,
            tmp_work_script = './test_workfile.sh',
            tmp_profile_script = './test_profilefile.sh',
            bash_options=['"Hello "', '"World!"'],
+           leave_scripts=True,
            test=True)
 ```
 This python script prints the following to the command line, but does not submit a job:
@@ -511,8 +512,9 @@ A Confluence page of what the prometheus and likwid results look like can be fou
 
 Developers:
 - Keil, Marcus (UCL)
-- Qaiser, Fawada (Durham)
+- van der Wilde, Matthijs (Durham)
 
 Contributors:
 - Morabito, Leah (Durham)
+- Qaiser, Fawada (Durham)
 - Yates, Jeremy (UCL)
