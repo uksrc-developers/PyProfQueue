@@ -56,7 +56,7 @@ def define_initialise(profilefile: io.TextIOWrapper, profilerdict: dict = None):
         IP_address = profilerdict['ip_address']
         profilefile.write(f"export PROMETHEUS_IP={IP_address}\n")
     profilefile.write('export PROMETHEUS_RUNNING_DIR=${WORKING_DIR}/Prometheus\n')
-    scrape_path = str(impresources.path(data, 'read_prometheus.py'))[:-19]
+    scrape_path = str(impresources.files(data).joinpath("fake"))[:-5]
     profilefile.write('export PROFILE_SCRAPE={}\n'.format(scrape_path))
     profilefile.write('\n')
     final_init_indicator = 1
