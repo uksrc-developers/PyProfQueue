@@ -55,13 +55,15 @@ class Script:
     def __init__(self, queue_system: str = 'slurm',
                  work_script: str = None,
                  work_command: str = None,
+                 tmp_work_script: str = "./tmp_work_script.sh",
+                 tmp_profile_script: str = "./tmp_profile_script",
                  read_queue_system: str = None,
                  queue_options: dict = None,
                  profiling: dict = None
                  ):
         if True:  # If statement added to allow for the collapse of the initiation of variables
-            self.tmp_work_script = None
-            self.tmp_profile_script = None
+            self.tmp_work_script = tmp_work_script
+            self.tmp_profile_script = tmp_profile_script
             self.work_dir = None
             self.works = None
             self.profiling = profiling
@@ -318,8 +320,7 @@ class Script:
         -------
 
         """
-        with NamedTemporaryFile(mode='w', delete=False, prefix='PyProfQueueTmp_Work_', suffix='.sh') as workfile:
-            self.tmp_work_script = workfile.name
+        with open(self.tmp_work_script, mode='w') as workfile:
             workfile.seek(0)
             if self.works is not None:
                 for line in self.works:
@@ -379,7 +380,7 @@ class Script:
         profilefile.write('\n')
         return
 
-    def create_profilefile(self, bash_options: list = None):
+    def create_profilefile(self, bash_options: list = None, tmp_profile_script: str = './tmp_workfile.sh', tmp_work_script: str = './tmp_profilefile.sh' ):
         """
         create_profilefile uses the attributes of the Script object, and creates the temporary profile file that will
         be submitted to the queue on behalf of the user.
@@ -404,8 +405,7 @@ class Script:
         if self.work_script is not None and any('code_line' in x for x in self.profiling):
             self.create_workfile()
 
-        with NamedTemporaryFile(mode='w', delete=False, prefix='PyProfQueueTmp_', suffix='.sh') as profilefile:
-            self.tmp_profile_script = profilefile.name
+        with open(self.tmp_profile_script, mode='w') as profilefile:
             profilefile.seek(0)
             profilefile.write('#!/bin/bash\n')
             if self.queue_system is not None:
