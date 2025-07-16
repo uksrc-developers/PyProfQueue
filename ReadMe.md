@@ -397,7 +397,25 @@ ${PROMETHEUS_SOFTWARE}
     └── prometheus.yml
 ```
 Where *node_exporter/node_exporter* is the executable for node_exporter, *prometheus/prometheus* is the executable for 
-prometheus, and *prometheus/prometheus.yml* is the configuration file to be used for prometheus.
+prometheus, and *prometheus/prometheus.yml* is the configuration file to be used for prometheus. If no pre-existing
+instance of prometheus and node_exporter is running on the machine of interest, the configuration file needs to be
+amended to account for the changed IP addresses of node_exporter and prometheus. It should look like so
+```md
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['localhost:9301']
+
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['localhost:9303']
+```
+where the global scrape interval can be adjusted according to usage needs and requirements. Shorter scrape times, leads
+to more data, but larger overhead for getting the data.
 </details>
 
 <details>
