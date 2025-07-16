@@ -313,7 +313,7 @@ ProfileScript = ppq.Script(queue_system='slurm',
                            tmp_profile_script = './test_profilefile.sh',
                            read_queue_system='slurm',
                            queue_options={
-                             'work_dir': '/home/queue_work/%x.%j',
+                             'work_dir': '/home/queue_work/job_name.job_id',
                              'job_name': 'NewName'},
                            profiling={
                              "likwid": {'requirements': ['module load oneAPI_comp/2021.1.0',
