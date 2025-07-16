@@ -40,7 +40,9 @@ The *Script* class is used in the following way, and the following options are a
 ```
 script = pyprofqueue.Script(queue_system: str,
                             work_script: str,
-                            read_queue_system: str =None,
+                            tmp_work_script: str = "./tmp_workfile.sh",
+                            tmp_profile_script: str = "./tmp_profilefile.sh",
+                            read_queue_system: str = None,
                             queue_options: dict = None,
                             profiling: dict = None
                             )   
@@ -49,6 +51,8 @@ script = pyprofqueue.Script(queue_system: str,
 |:--------------------------:|------------------------------------------------------------------------------------------------------------------------------------|
 |        queue_system        | The intended target queue system (Supports Slurm and PBS Torque)                                                                   |
 |        work_script         | The bash script which contains the queue options and work to be done                                                               |
+| tmp_work_script (Optional)  | Desired name of temporary work script. Defaults to "./tmp_workfile.sh".                                                                                                                |
+|tmp_profile_script (Optional)| Desired name of temporary profile script. Defaults to "./tmp_profilefile.sh".                                                                                                          |
 |read_queue_system (Optional)| The name of the queue system for which the script was written if it was written for a queue system                                 |
 |  queue_options (Optional)  | Any queue options to add or override when compared to the work_script                                                              |
 |    profiling (Optional)    | Dictionary with keys representing which profiler to use with values of dictionaries listing profiler options such as "requirements"|
@@ -84,19 +88,13 @@ The *submit* function serves as the point of execution for PyProfQueue. When cal
 object, and submit it to the queue system the *Script* object is configured for.
 ```
 pyprofqueue.submit(script: Script,
-                   tmp_work_script: str = './tmp_workfile.sh',
-                   tmp_profile_script: str = './tmp_profilefile.sh',
                    bash_options: list = [''],
-                   leave_scripts: bool = True,
                    test: bool = False):
 ```
 |           Option            | Description                                                                                                                                                                            |
 |:---------------------------:|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 |           script            | *Script* object to be submitted to queue                                                                                                                                               |
-| tmp_work_script (Optional)  | Desired name of temporary work script. Defaults to "./tmp_workfile.sh".                                                                                                                |
-|tmp_profile_script (Optional)| Desired name of temporary profile script. Defaults to "./tmp_profilefile.sh".                                                                                                          |
 |   bash_options (Optional)   | List of options that the user provided bash script may require. Defaults to [''].                                                                                                      |
-|  leave_scripts (Optional)   | Boolean to determine if the temporary scripts should be left or removed after submission. If False then "tmp_work_script" and "tmp_profile_script" will be ignored. Defaults to False. |
 |       test (Optional)       | Boolean to determine if the script should be submitted, or if the command that would be used should be printed to the terminal.                                                        |
 
 </details>
@@ -197,13 +195,10 @@ be included into the data, but non-separable.
 ### Outputs
 The output of the *Script* class, is an object that contains all the given options, file paths and other variables 
 needed in order to create the bash scripts that can be submitted to a queue system. The outputs from *submit* 
-depend on the given options. If the *test* and *leave_scripts* are set to **False**, then the output of *submit* is 
-the same as the output of the submission command for the respective queue system being used. If *test* or 
-*leave_scripts* are set to **True** then the output includes two bash scripts. The first contains the original work 
-to be performed, the other contains all the necessary variable declarations and command calls in order to perform 
-the profiling of the given bash script. It is the profiling script that is submitted to the queue. Additionally,
-if *test* is **True**, then the command line will output what command would be used in order to submit the job, but
-the command will not actually be called.
+depend on the given options. If the *test* value is set to **False**, then the output of *submit* is 
+the same as the output of the submission command for the respective queue system being used. If *test* is **True**, 
+then the command line will output what command would be used in order to submit the job, but the command will not 
+actually be called.
 
 Where profilers are set up to return plots, the outputs are .png files. While the plots are autogenerated in most cases,
 it is possible to replot them in post using the functions found within the respective python scripts for a profiler.
@@ -305,14 +300,18 @@ echo "The second option was:"
 echo ${2}
 ```
 
-The following example python script can be used to add the prometheus monitoring, likwid performance profiling and to 
-submit the script to the queue. We have listed the queue options in the *Script* object initialisation even though it 
+The following example python script is meant for the Cosma system in Durham, which has modules to load likwid. This 
+script can be used as a basis to add the prometheus monitoring, likwid performance profiling and to submit the script 
+to the queue, but may require some changes by users. We have listed the queue options in the *Script* object initialisation even though it 
 would pull them from the bash script in order to show an example of how they would be listed.
 ```python 
 import pyprofqueue as ppq
 
 ProfileScript = ppq.Script(queue_system='slurm',
                            work_script='./tmp_workfile.sh',
+                           tmp_work_script = './test_workfile.sh',
+                           tmp_profile_script = './test_profilefile.sh',
+                           read_queue_system='slurm',
                            queue_options={
                              'work_dir': '/home/queue_work/%x.%j',
                              'job_name': 'NewName'},
@@ -324,10 +323,7 @@ ProfileScript = ppq.Script(queue_system='slurm',
                            )
 
 ppq.submit(ProfileScript, 
-           tmp_work_script = './test_workfile.sh',
-           tmp_profile_script = './test_profilefile.sh',
            bash_options=['"Hello "', '"World!"'],
-           leave_scripts=True,
            test=True)
 ```
 This python script prints the following to the command line, but does not submit a job:
