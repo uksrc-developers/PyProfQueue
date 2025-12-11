@@ -14,7 +14,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyprofqueue"
-version = "0.4.1a1"
+version = "0.4.1a4"
 authors = [
     { name = "Marcus Keil", email = "marcus.keil@cs.ucl.ac.uk" }
 ]
@@ -23,7 +23,7 @@ maintainers = [
 ]
 license = {text = "MIT License"}
 description = "pyprofqueue serves as a python package that can take in existing bash scripts, add initialisations and calls to use profilers on the bash script, and submit the script to an HPC queue system on the users' behalf."
-readme = "README.md"
+readme = "ReadMe.md"
 classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Science/Research',

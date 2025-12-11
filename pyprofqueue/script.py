@@ -17,6 +17,10 @@ class Script:
         str of the path and name of the original bash script to be profiled
     work_command : str
         str terminal command to execute and profile
+    tmp_work_script: str = "./tmp_work_script.sh"
+        str of the path and name of where to write the temporary work script.
+    tmp_profile_script: str = "./tmp_profile_script"
+        str of the path and name of where to write the temporary profiling script.
     read_queue_system : str = None
         str of the queue system that the work_script was written for, if not specified it is assumed
         it is the same as queue_system. [slurm, torque]
@@ -402,7 +406,7 @@ class Script:
         if bash_options is None:
             bash_options = ['']
 
-        if self.work_script is not None and any('code_line' in x for x in self.profiling):
+        if self.work_script is not None and any('code_line' in x for x in self.profiling) and self.read_queue_system is not None:
             self.create_workfile()
 
         with open(self.tmp_profile_script, mode='w') as profilefile:
@@ -410,10 +414,13 @@ class Script:
             profilefile.write('#!/bin/bash\n')
             if self.queue_system is not None:
                 self.add_options(profilefile)
+                core_count = (self.obj_options.option_dictionary['cores'] if 'cores' in self.obj_options.option_dictionary else 'CPU_PER_NODE')
                 if 'option_environment_variable' in self.queue_system_parameters:
                     for key_queue, value_queue in self.queue_system_parameters['option_environment_variable'].items():
                         self.work_dir = self.work_dir.replace(value_queue, key_queue)
+                        core_count = core_count.replace(value_queue, key_queue)
                 profilefile.write('export WORKING_DIR={}\n'.format(self.work_dir))
+                profilefile.write(f"export CPU_PER_TASK={core_count}\n")
             else:
                 profilefile.write('\n')
                 profilefile.write('export WORKING_DIR={}\n'.format(self.work_dir))

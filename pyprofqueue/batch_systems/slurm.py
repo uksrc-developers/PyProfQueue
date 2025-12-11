@@ -11,7 +11,7 @@ parameters = {
             'submit_directory': '${SLURM_SUBMIT_DIR}',
             'submit_host': '${SLURM_SUBMIT_HOST}'
         },
-    'option_environment_variable': {'${SLURM_JOB_NAME}': '%x', '${SLURM_JOB_ID}': '%j'},
+    'option_environment_variable': {'${SLURM_JOB_NAME}': '%x', '${SLURM_JOB_ID}': '%j', 'CPU_PER_NODE': '${SLURM_JOB_CPUS_PER_NODE}'},
     'options':
         {
             'account': ['A', 'account'],

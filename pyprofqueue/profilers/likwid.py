@@ -65,16 +65,16 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list = [''], works: 
     None
     """
 
-    profiling_call = 'likwid-perfctr -g MEM_DP -t 300s -o  -O -f '
+    profiling_call = 'likwid-perfctr -g MEM_DP -t 300s -O -f '
 
     if tmp_work_script is None and (profilerdict is None or 'code_line' not in profilerdict.keys()):
         profilefile.write(profiling_call + 'bash ' +
-                          '{} {}\n'.format(work_script, ' '.join([str(x) for x in bash_options])) +
-                          ' >> ${LIKWID_RUNNING_DIR}/likwid_output.txt')
+                          '{} {}'.format(work_script, ' '.join([str(x) for x in bash_options])) +
+                          ' >> ${LIKWID_RUNNING_DIR}/likwid_output.txt\n')
     elif (profilerdict is None or 'code_line' not in profilerdict.keys()):
         profilefile.write(profiling_call + 'bash ' +
-                          '{} {}\n'.format(tmp_work_script, ' '.join([str(x) for x in bash_options])) +
-                          ' >> ${LIKWID_RUNNING_DIR}/likwid_output.txt')
+                          '{} {}'.format(tmp_work_script, ' '.join([str(x) for x in bash_options])) +
+                          ' >> ${LIKWID_RUNNING_DIR}/likwid_output.txt\n')
     elif ('code_line' in profilerdict.keys()):
         with open(tmp_work_script, 'r') as workfile:
             workfile.seek(0)
@@ -89,8 +89,9 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list = [''], works: 
         profilefile.write('bash {} {}\n'.format(tmp_work_script, ' '.join([str(x) for x in bash_options])))
     else:
         profilefile.write(profiling_call +
-                          ' '.join(works) + ' {}\n'.format(' '.join([str(x) for x in bash_options]))
-                          + ' >> ${LIKWID_RUNNING_DIR}/likwid_output.txt')
+                          ' '.join(works) +
+                          ' {}'.format(' '.join([str(x) for x in bash_options]))
+                          + ' >> ${LIKWID_RUNNING_DIR}/likwid_output.txt \n')
     profilefile.write('\n')
     return
 
