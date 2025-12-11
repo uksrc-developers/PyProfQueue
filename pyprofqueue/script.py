@@ -114,10 +114,11 @@ class Script:
             elif work_command is not None:
                 self.work_script = None
                 self.works = [work_command]
+                self.create_workfile()
             else:
                 exit(f'Either work_script or work_command must be specified.')
 
-            self.create_workfile()
+            #self.create_workfile()
 
 
 

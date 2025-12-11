@@ -14,7 +14,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyprofqueue"
-version = "0.4.1a4"
+version = "0.4.1a6"
 authors = [
     { name = "Marcus Keil", email = "marcus.keil@cs.ucl.ac.uk" }
 ]

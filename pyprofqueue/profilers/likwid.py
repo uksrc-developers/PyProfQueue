@@ -1,4 +1,5 @@
 from importlib import resources as impresources
+import subprocess
 import itertools
 import io
 
@@ -6,6 +7,7 @@ import matplotlib.collections as collection
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+from pyarrow import output_stream
 
 from . import data
 
@@ -64,17 +66,23 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list = [''], works: 
     -------
     None
     """
-
-    profiling_call = 'likwid-perfctr -g MEM_DP -t 300s -O -f '
+    groups={}
+    for group in subprocess.check_output(["likwid-perfctr", "-a"]).decode("utf-8").split("\n"):
+        temp_group = group.split("\t")
+        if len(temp_group) > 1 and temp_group[0] != "Group name":
+            groups[temp_group[0].strip()] = temp_group[1]
+    group_of_choice = "MEM" if "MEM" in groups else "MEMREAD" if "MEMREAD" in groups else "MEM_DP" if "MEM_DP" in groups else exit("No memory group could be found for Likwid.")
+    profiling_call = f'likwid-perfctr -g {group_of_choice} -t 300s -O -f '
+    output_call = " 2> ${LIKWID_RUNNING_DIR}/temp_likwid.txt > ${LIKWID_RUNNING_DIR}/temp_out.txt\n"
 
     if tmp_work_script is None and (profilerdict is None or 'code_line' not in profilerdict.keys()):
         profilefile.write(profiling_call + 'bash ' +
                           '{} {}'.format(work_script, ' '.join([str(x) for x in bash_options])) +
-                          ' >> ${LIKWID_RUNNING_DIR}/likwid_output.txt\n')
+                          output_call)
     elif (profilerdict is None or 'code_line' not in profilerdict.keys()):
         profilefile.write(profiling_call + 'bash ' +
                           '{} {}'.format(tmp_work_script, ' '.join([str(x) for x in bash_options])) +
-                          ' >> ${LIKWID_RUNNING_DIR}/likwid_output.txt\n')
+                          output_call)
     elif ('code_line' in profilerdict.keys()):
         with open(tmp_work_script, 'r') as workfile:
             workfile.seek(0)
@@ -82,7 +90,7 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list = [''], works: 
         for line in range(len(data)):
             for profile_line in profilerdict['code_line']:
                 if data[line] == profile_line+'\n':
-                    data[line] = profiling_call + data[line].strip() + ' >> ${LIKWID_RUNNING_DIR}/likwid_output.txt\n'
+                    data[line] = profiling_call + data[line].strip() + output_call
         with open(tmp_work_script, 'w') as workfile:
             workfile.seek(0)
             workfile.writelines(data)
@@ -91,7 +99,7 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list = [''], works: 
         profilefile.write(profiling_call +
                           ' '.join(works) +
                           ' {}'.format(' '.join([str(x) for x in bash_options]))
-                          + ' >> ${LIKWID_RUNNING_DIR}/likwid_output.txt \n')
+                          + output_call)
     profilefile.write('\n')
     return
 
