@@ -1,7 +1,5 @@
 from importlib import resources as impresources
-import subprocess
-import itertools
-import io
+import subprocess, itertools, io, os
 
 import matplotlib.collections as collection
 import matplotlib.pyplot as plt
@@ -66,13 +64,7 @@ def define_run(profilefile: io.TextIOWrapper, bash_options: list = [''], works: 
     -------
     None
     """
-    groups={}
-    for group in subprocess.check_output(["likwid-perfctr", "-a"]).decode("utf-8").split("\n"):
-        temp_group = group.split("\t")
-        if len(temp_group) > 1 and temp_group[0] != "Group name":
-            groups[temp_group[0].strip()] = temp_group[1]
-    group_of_choice = "MEM" if "MEM" in groups else "MEMREAD" if "MEMREAD" in groups else "MEM_DP" if "MEM_DP" in groups else exit("No memory group could be found for Likwid.")
-    profiling_call = f'likwid-perfctr -g {group_of_choice} -t 300s -O -f '
+    profiling_call = f'likwid-perfctr -g PYPROFQUEUE -t 120s -O -f '
     output_call = " 2> ${LIKWID_RUNNING_DIR}/temp_likwid.txt > ${LIKWID_RUNNING_DIR}/temp_out.txt\n"
 
     if tmp_work_script is None and (profilerdict is None or 'code_line' not in profilerdict.keys()):
@@ -127,6 +119,135 @@ def define_end(profilefile: io.TextIOWrapper):
     profilefile.write('\n')
     return
 
+def create_custom_group():
+    architecture = subprocess.run(
+        "likwid-perfctr -i | awk '/CPU short:/ {print $NF}'",
+        capture_output=True,
+        shell = True,
+        text=True
+    ).stdout.strip("\n")
+    if architecture == "":
+        architecture = subprocess.run(
+            "likwid-perfctr -i | awk '/cpu short:/ {print $NF}'",
+            capture_output=True,
+            shell = True,
+            text=True
+        ).stdout.strip("\n")
+    if 'Cannot access directory' in architecture:
+        SystemExit("Unknown Architecture for likwid, unable to use likwid on this system")
+    groups_location = subprocess.run(
+        ['which', 'likwid-perfctr'],
+        capture_output=True,
+        text=True
+    ).stdout[:-2]
+    perfgroups_location = os.path.abspath(
+        os.path.join(
+            groups_location,
+            '..' if '/bin' not in groups_location else '../..',
+            f'share/likwid/perfgroups/{architecture}'
+        )
+    )
+    ls_results = subprocess.run(f"ls {perfgroups_location}", shell=True, capture_output=True, text=True).stdout.strip().split('\n')
+    memory_variables = {}
+    memory_long_line = ""
+    flop_variables = {}
+    flop_metric_lines = []
+    flop_long_line = ""
+    for group in ls_results:
+        if "MEM" in group:
+            lines = subprocess.run(f"cat {perfgroups_location}/{group}", shell=True, capture_output=True, text=True).stdout.strip().split('\n')
+            counter_name_format = ""
+            counter_variables = []
+            passed_long = False
+            for line in lines:
+                if "LONG" in line:
+                    passed_long = True
+                elif "Memory" in line and "bandwidth" in line:
+                    output_of_interest = line[line.find('1.0E-06*(') + 9:line.find(')*64.0')]
+                    if passed_long:
+                        if "SUM(" in line and "_*" in line:
+                            counter_name_format = output_of_interest[4:-2]
+                        elif "SUM(" in line:
+                            counter_name_format = output_of_interest[4:]
+                        elif "_*" in line:
+                            counter_name_format = output_of_interest[-2]
+                        elif "+" in line:
+                            counter_name_format = output_of_interest.split("+")[0]
+                        memory_long_line = line
+                    else:
+                        counter_variables += [v for v in output_of_interest.split("+")]
+            for variable in counter_variables:
+                if variable in memory_variables:
+                    pass
+                memory_variables[variable] = counter_name_format + (
+                    variable[-2:] if variable[-2].isdigit() else variable[-1:])
+        elif "FLOPS" in group:
+            lines = subprocess.run(["cat", perfgroups_location + "/" + group], capture_output=True,
+                                   text=True).stdout.strip().split('\n')
+            counter_names = []
+            counter_variables = []
+            passed_long = False
+            for line in lines:
+                if "LONG" in line:
+                    passed_long = True
+                elif "[MFLOP/s]" in line:
+                    output_of_interest = line[line.find('1.0E-06*(') + 9:line.find(')/time')]
+                    if passed_long:
+                        flop_long_line = line
+                        counter_names += [v[:(v.find('*') if v.find('*') > 0 else None)] for v in
+                                          output_of_interest.split("+")]
+                        break
+                    else:
+                        flop_metric_lines += [line]
+                        counter_variables += [v[:(v.find('*') if v.find('*') > 0 else None)] for v in
+                                              output_of_interest.split("+")]
+            for variable in range(len(counter_variables)):
+                if variable in flop_variables:
+                    pass
+                flop_variables[counter_variables[variable]] = counter_names[variable]
+
+    group_doc_lines = [
+        f"SHORT  Custom group to extract FLOP/s, Memory bandwidth in Bytes/s and Operational Intensity in FLOP/Byte for {architecture} architecture\n",
+        "\n",
+        "EVENTSET\n",
+        "FIXC1  ACTUAL_CPU_CLOCK\n",
+        "FIXC2  MAX_CPU_CLOCK\n",
+        "PMC0   RETIRED_INSTRUCTIONS\n",
+        "PMC1   CPU_CLOCKS_UNHALTED\n",
+    ]
+    group_doc_lines += [f'{k}   {v}\n' for k, v in flop_variables.items()]
+    group_doc_lines += f'PMC{len(list(flop_variables.keys()))+2}   MERGE\n'
+    group_doc_lines += [f'{k}   {v}\n' for k, v in memory_variables.items()]
+    group_doc_lines += [
+        "\n",
+        "METRICS\n",
+    ]
+    metric_DP_lines = "+".join(list(flop_variables.keys()))
+    metric_memory_sum = "+".join(list(memory_variables.keys()))
+    group_doc_lines += [
+        f'DP [FLOP/s]  ({metric_DP_lines})/time\n',
+        f'Memory Bandwidth [Bytes/s]  ({metric_memory_sum})*64.0/time\n',
+        f'Memory data volume [Bytes] ({metric_memory_sum})*64.0\n'
+        f'Operational intensity [FLOP/Byte] ({"+".join([k for k in list(flop_variables.keys())])})/(({metric_memory_sum})*64.0)\n',
+        "\n",
+        "LONG\n",
+        "Formulas:"
+    ]
+
+    group_doc_lines += [
+        flop_long_line.replace("[MFLOP/s]", "[FLOP/s]").replace("1.0E-6*", "") + "\n",
+        memory_long_line.replace("[MBytes/s]", "[Bytes/s]").replace("1.0E-6*", "") + '\n',
+        memory_long_line.replace("bandwidth [MBytes/s]", "data volume [GBytes]")[:-5] + '\n',
+        f'Operational intensity [FLOP/Byte] ({"+".join([v for v in list(flop_variables.values())])})/(({"+".join(list(memory_variables.values()))})*64.0)\n'
+        "-\n"
+        "Custom group for PyProfQueue to calculate Operational Intensity for Roofline model"
+    ]
+
+    with open(f"{os.getcwd()}/PYPROFQUEUE.txt", 'w') as fp:
+        for line in group_doc_lines:
+            fp.write(line)
+
+    return
 
 def plot_likwid_roof_single(name_prefix: str,
                             maxperf: float,
@@ -171,11 +292,11 @@ def plot_likwid_roof_single(name_prefix: str,
 
 
 def read_timeseries(likwid_file: str):
-    likwid_header = pd.read_csv(likwid_file, header=None, skiprows=1, nrows=1)
-    likwid_dataframe = pd.read_csv(likwid_file, skiprows=[0, 1], header=None)
+    likwid_header = pd.read_csv(likwid_file, header=None, skiprows=1, nrows=1, delimiter='|')
+    likwid_dataframe = pd.read_csv(likwid_file, skiprows=[0, 1], header=None, delimiter=',')
     metrics = likwid_dataframe.iloc[0, 1]
     cpu_count = likwid_dataframe.iloc[0, 2]
-    header = ["GID", "MetricsCount", "CPUCount", "Total runtime [s]"]
+    header = ["GID", "MetricsCount", "CpuCount", "Total runtime [s]"]
     for metric in range(4, metrics + 4):
         for cpu in range(cpu_count):
             header += [f"Thread {cpu}: {likwid_header.iloc[0, metric]}"]
@@ -183,16 +304,14 @@ def read_timeseries(likwid_file: str):
 
     keep = []
     for name in header:
-        if 'Operational intensity' in name or ": MFLOP/s" in name or "Total runtime [s]" in name:
+        if 'Operational intensity' in name or "[FLOP/s]" in name or "Total runtime [s]" in name:
             keep += [True]
         else:
             keep += [False]
-    len(keep)
     reduced_dataframe = likwid_dataframe.loc[:, keep]
-
     time = reduced_dataframe.filter(like='Total runtime [s]').sum(1).values
     op_int = reduced_dataframe.filter(like='Operational intensity').sum(1).values
-    flop_s = reduced_dataframe.filter(like='MFLOP/s').sum(1).values
+    flop_s = reduced_dataframe.filter(like='[FLOP/s]').sum(1).values
     return time, op_int, flop_s
 
 
@@ -203,9 +322,8 @@ def plot_roof_timeseries(likwid_file: str,
                          code_name: str = 'code',
                          log_plot: bool = False):
     time_series, code_opint, code_mflop = read_timeseries(likwid_file)
-    points = np.array([code_opint, code_mflop]).T.reshape(-1, 1, 2)
+    points = np.array([code_opint, code_mflop*1.0e-6]).T.reshape(-1, 1, 2)
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
-
     if maxperf / maxband > 1:
         max_x = (maxperf / maxband) * 2
     else:
@@ -233,16 +351,15 @@ def plot_roof_timeseries(likwid_file: str,
     axs.vlines(maxperf / maxband, 0, maxperf, linestyle='--', color='gray', alpha=0.5,
                label='Mem BandWidth to CPU limit boarder')
     line = axs.add_collection(lc)
-    points = axs.add_collection(pc)
     fig.colorbar(line, ax=axs, label='Time [s]')
 
     axs.set_xlim(0, max_x*1.1)
     if log_plot:
         axs.set_yscale('log')
-        axs.set_ylim(code_mflop.min(), maxperf * 10)
+        axs.set_ylim(1e-10, maxperf * 3)
         axs.set_ylabel('Performance log([MFLOP/s])')
     else:
-        axs.set_ylim(0, maxperf*1.1)
+        axs.set_ylim(0, maxperf*1.05)
         axs.set_ylabel('Performance [MFLOP/s]')
     axs.set_xlabel('Operational Intensity')
     plt.savefig(name_prefix + '_TimeSeriesRoofline.png', bbox_inches='tight')

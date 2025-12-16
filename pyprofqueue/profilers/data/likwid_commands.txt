@@ -9,19 +9,23 @@ echo 'SSE MFlops/s' >> ${LIK_OUTPUT}
 likwid-bench -t peakflops_sse -W N:${STREAM_SIZE}:${THREAD_COUNT} | grep 'MFlops/s:' >> ${LIK_OUTPUT}
 echo 'AVX MFlops/s' >> ${LIK_OUTPUT}
 likwid-bench -t peakflops_avx -W N:${STREAM_SIZE}:${THREAD_COUNT} | grep 'MFlops/s:' >> ${LIK_OUTPUT}
-echo 'Scalar MByte/s' >> ${LIK_OUTPUT}
 export PERF=$(grep -oP 'MFlops/s:\s*\K\d+' ${LIK_OUTPUT} | sort -n | head -n 1)
 
+echo 'Scalar MByte/s' >> ${LIK_OUTPUT}
 likwid-bench -t load -W N:8GB:${THREAD_COUNT} | grep 'MByte/s:' >> ${LIK_OUTPUT}
 echo 'SSE MByte/s' >> ${LIK_OUTPUT}
 likwid-bench -t load_sse -W N:8GB:${THREAD_COUNT} | grep 'MByte/s:' >> ${LIK_OUTPUT}
 echo 'AVX MByte/s' >> ${LIK_OUTPUT}
 likwid-bench -t load_avx -W N:8GB:${THREAD_COUNT} | grep 'MByte/s:' >> ${LIK_OUTPUT}
 export BAND=$(grep -oP 'MByte/s:\s*\K\d+' ${LIK_OUTPUT} | sort -n | head -n 1)
+
+${PYTHON_INSTANCE} -c "import pyprofqueue.profilers.likwid as lik; lik.create_custom_group();"
+export ARCHITECTURE=$(likwid-perfctr -i | awk '/CPU short:/ {print $NF}')
+mkdir -p $HOME/.likwid/groups/$ARCHITECTURE
+cp ./PYPROFQUEUE.txt $HOME/.likwid/groups/$ARCHITECTURE/PYPROFQUEUE.txt
 # *=*
 sed -n '/^# HWThreads:/,+1p' ${LIKWID_RUNNING_DIR}/temp_out.txt > ${LIKWID_RUNNING_DIR}/likwid_output.txt
 sed '/^$/Q' ${LIKWID_RUNNING_DIR}/temp_likwid.txt >> ${LIKWID_RUNNING_DIR}/likwid_output.txt
 
 echo 'Plotting Likwid output as series'
 ${PYTHON_INSTANCE} -c "import pyprofqueue.profilers.likwid as lik; lik.plot_roof_timeseries(likwid_file='${LIKWID_RUNNING_DIR}/likwid_output.txt', name_prefix='${LIKWID_RUNNING_DIR}/Likwid', maxperf=${PERF}, maxband=${BAND});"
-${PYTHON_INSTANCE} -c "import pyprofqueue.profilers.likwid as lik; lik.plot_roof_timeseries(likwid_file='${LIKWID_RUNNING_DIR}/likwid_output.txt', name_prefix='${LIKWID_RUNNING_DIR}/Likwid_Log', maxperf=${PERF}, maxband=${BAND}, log_plot=True);"
