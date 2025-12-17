@@ -231,14 +231,14 @@ def create_custom_group():
         f'Operational intensity [FLOP/Byte] ({"+".join([k for k in list(flop_variables.keys())])})/(({metric_memory_sum})*64.0)\n',
         "\n",
         "LONG\n",
-        "Formulas:"
+        "Formulas:\n"
     ]
 
     group_doc_lines += [
-        flop_long_line.replace("[MFLOP/s]", "[FLOP/s]").replace("1.0E-6*", "") + "\n",
-        memory_long_line.replace("[MBytes/s]", "[Bytes/s]").replace("1.0E-6*", "") + '\n',
-        memory_long_line.replace("bandwidth [MBytes/s]", "data volume [GBytes]")[:-5] + '\n',
-        f'Operational intensity [FLOP/Byte] ({"+".join([v for v in list(flop_variables.values())])})/(({"+".join(list(memory_variables.values()))})*64.0)\n'
+        flop_long_line.replace("[MFLOP/s]", "[FLOP/s]").replace("1.0E-06*", "") + "\n",
+        memory_long_line.replace("[MBytes/s]", "[Bytes/s]").replace("1.0E-06*", "") + '\n',
+        memory_long_line.replace("bandwidth [MBytes/s]", "data volume [Bytes]")[:-5] + '\n',
+        f'Operational intensity [FLOP/Byte] ({list(flop_variables.values())[0] if "ALL" in list(flop_variables.values())[0] else list(flop_variables.values())[0][:-1] + "*"})/(({list(memory_variables.values())[0][:-1]}*)*64.0)\n'
         "-\n"
         "Custom group for PyProfQueue to calculate Operational Intensity for Roofline model"
     ]

@@ -348,8 +348,11 @@ While test_profiliefile.sh contains all the necessary initialisations and termin
 and provide plots and output files. The entire file won't be listed here as it is quite length, however we will 
 state how the test_workfile.sh is called within test_profilefile.sh
 ```bash
-likwid-perfctr -g MEM_DP -t 300s -o ${LIKWID_RUNNING_DIR}/likwid_output.txt -O -f bash ./test_workfile.sh  "Hello " "World!"
+likwid-perfctr -g PYPROFQUEUE -t 300s -o ${LIKWID_RUNNING_DIR}/likwid_output.txt -O -f bash ./test_workfile.sh  "Hello " "World!"
 ```
+Where PYPROFQUEUE is a custom group that is created by the pyprofqueue code when likwid is used. It should automatically
+detect the architecture of the system on which it is being run, search existing metric groups and extract the needed
+information in order to calculate the Performance in [FLOP/s] as well as the operational intensity in [FLOP/Byte]
 </details>
 
 ___
