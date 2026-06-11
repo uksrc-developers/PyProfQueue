@@ -5,7 +5,6 @@ import time
 # Local package imports
 from .script import Script
 
-
 def submit(script: Script,
            bash_options: list = None,
            test: bool = False):

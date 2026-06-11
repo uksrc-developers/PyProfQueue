@@ -160,6 +160,8 @@ def create_custom_group():
             counter_variables = []
             passed_long = False
             for line in lines:
+                if "SHORT" in line:
+                   continue
                 if "LONG" in line:
                     passed_long = True
                 elif "Memory" in line and "bandwidth" in line:
@@ -168,7 +170,7 @@ def create_custom_group():
                         if "SUM(" in line and "_*" in line:
                             counter_name_format = output_of_interest[4:-2]
                         elif "SUM(" in line:
-                            counter_name_format = output_of_interest[4:]
+                            counter_name_format = output_of_interest[4:output_of_interest.find(')')]
                         elif "_*" in line:
                             counter_name_format = output_of_interest[-2]
                         elif "+" in line:
@@ -178,9 +180,19 @@ def create_custom_group():
                         counter_variables += [v for v in output_of_interest.split("+")]
             for variable in counter_variables:
                 if variable in memory_variables:
-                    pass
-                memory_variables[variable] = counter_name_format + (
-                    variable[-2:] if variable[-2].isdigit() else variable[-1:])
+                    continue
+                addition_string = ""
+                if variable[-2].isdigit():
+                    addition_string = variable[-2:]
+                elif counter_name_format[-2:] == "RD" and variable[-1:] == '0':
+                    addition_string = "RD"
+                elif counter_name_format[-2:] == "RD" and variable[-1:] == '1':
+                    addition_string = "WR"
+                else:
+                    variable[-1:]
+                memory_variables[variable] = (counter_name_format if counter_name_format[
+                                                                         -2:] != "RD" else counter_name_format[
+                    :-2]) + addition_string
         elif "FLOPS" in group:
             lines = subprocess.run(["cat", perfgroups_location + "/" + group], capture_output=True,
                                    text=True).stdout.strip().split('\n')
@@ -196,14 +208,13 @@ def create_custom_group():
                         flop_long_line = line
                         counter_names += [v[:(v.find('*') if v.find('*') > 0 else None)] for v in
                                           output_of_interest.split("+")]
-                        break
                     else:
                         flop_metric_lines += [line]
                         counter_variables += [v[:(v.find('*') if v.find('*') > 0 else None)] for v in
                                               output_of_interest.split("+")]
             for variable in range(len(counter_variables)):
                 if variable in flop_variables:
-                    pass
+                    continue
                 flop_variables[counter_variables[variable]] = counter_names[variable]
 
     group_doc_lines = [
@@ -233,20 +244,18 @@ def create_custom_group():
         "LONG\n",
         "Formulas:\n"
     ]
-
     group_doc_lines += [
         flop_long_line.replace("[MFLOP/s]", "[FLOP/s]").replace("1.0E-06*", "") + "\n",
         memory_long_line.replace("[MBytes/s]", "[Bytes/s]").replace("1.0E-06*", "") + '\n',
-        memory_long_line.replace("bandwidth [MBytes/s]", "data volume [Bytes]")[:-5] + '\n',
-        f'Operational intensity [FLOP/Byte] ({list(flop_variables.values())[0] if "ALL" in list(flop_variables.values())[0] else list(flop_variables.values())[0][:-1] + "*"})/(({list(memory_variables.values())[0][:-1]}*)*64.0)\n'
+        memory_long_line.replace("bandwidth [MBytes/s]", "data volume [GBytes]")[
+            :memory_long_line.replace("bandwidth [MBytes/s]", "data volume [GBytes]").find("/")] + '\n',
+        f'Operational intensity [FLOP/Byte] ({"+".join([v for v in list(flop_variables.values())])})/(({"+".join(list(memory_variables.values()))})*64.0)\n'
         "-\n"
         "Custom group for PyProfQueue to calculate Operational Intensity for Roofline model"
     ]
-
     with open(f"{os.getcwd()}/PYPROFQUEUE.txt", 'w') as fp:
         for line in group_doc_lines:
             fp.write(line)
-
     return
 
 def plot_likwid_roof_single(name_prefix: str,
